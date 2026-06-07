@@ -578,7 +578,10 @@
                     return;
                 }
 
-                const blob = new Blob([message], { type: 'text/html' });
+                // Ensure WSSM31 is followed by a line break in the saved file
+                const fileContent = message.replace(/^WSSM31\s*/, 'WSSM31\n');
+
+                const blob = new Blob([fileContent], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
