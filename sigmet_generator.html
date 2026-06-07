@@ -68,14 +68,6 @@
             transform: translateY(-1px);
             box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
         }
-        .btn-upload {
-            background: linear-gradient(90deg, #16a34a, #22c55e);
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }
-        .btn-upload:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.45);
-        }
         #map {
             height: 600px;
             width: 100%;
@@ -245,16 +237,7 @@
         <div class="mt-6 glass-panel rounded-2xl p-5">
             <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <h2 class="text-xl font-semibold flex items-center gap-2"><i class="fas fa-file-lines text-sky-400"></i> Generated SIGMET</h2>
-                <button id="uploadBtn" class="btn-upload text-white font-medium py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-opacity-50">
-                    <i class="fas fa-file-export mr-1"></i> Save as SIGMET.htm (for FTP upload)
-                </button>
             </div>
-            <p class="text-xs text-slate-400 mb-3">
-                <i class="fas fa-circle-info mr-1"></i>
-                Browsers cannot connect directly to an FTP server, and embedding FTP credentials in this page would expose them to anyone viewing the page source.
-                This button instead saves the generated message as <span class="font-mono">SIGMET.htm</span> on your computer, ready to be uploaded with your FTP client to
-                <span class="font-mono">hydromet.sr</span> → <span class="font-mono">/public_html/mds_upload/</span>.
-            </p>
             <div class="relative">
                 <textarea id="sigmetOutput" class="w-full h-32 p-3 glass-input rounded-lg text-sm" readonly=""></textarea>
                 <button id="copyBtn" class="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-slate-200 p-2 rounded-md transition" title="Copy to clipboard">
@@ -566,35 +549,6 @@
                 setTimeout(() => {
                     this.innerHTML = '<i class="fas fa-copy"></i>';
                 }, 2000);
-            });
-
-            // Save SIGMET as SIGMET.htm for manual FTP upload to hydromet.sr/public_html/mds_upload/
-            document.getElementById('uploadBtn').addEventListener('click', function() {
-                const sigmetOutput = document.getElementById('sigmetOutput');
-                const message = sigmetOutput.value.trim();
-
-                if (!message) {
-                    alert('Generate a SIGMET first before saving it.');
-                    return;
-                }
-
-                // Ensure WSSM31 is followed by a line break in the saved file
-                const fileContent = message.replace(/^WSSM31\s*/, 'WSSM31\n');
-
-                const blob = new Blob([fileContent], { type: 'text/html' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = 'SIGMET.htm';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-
-                this.innerHTML = '<i class="fas fa-check mr-1"></i> Saved SIGMET.htm';
-                setTimeout(() => {
-                    this.innerHTML = '<i class="fas fa-file-export mr-1"></i> Save as SIGMET.htm (for FTP upload)';
-                }, 2500);
             });
         });
     </script>
