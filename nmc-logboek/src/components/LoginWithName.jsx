@@ -19,7 +19,7 @@ export default function LoginWithName({ label, onLogin }) {
       setPw("");
       return;
     }
-    onLogin(result.naam);
+    onLogin(result.naam, result.role);
   };
 
   return (

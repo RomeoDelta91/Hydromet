@@ -91,6 +91,7 @@ export const TABS = [
   { id: "observer", label: "Observer", loginLabel: "Observer Login" },
   { id: "overzicht", label: "Overzicht", loginLabel: "Overzicht Login" },
   { id: "analyse", label: "Analyse", loginLabel: "Analyse Login" },
+  { id: "beheer", label: "Beheer", loginLabel: "Beheer Login", adminOnly: true },
 ];
 
 export const STORAGE_KEY = "nmc_logboek_v7";

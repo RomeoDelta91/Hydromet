@@ -12,23 +12,25 @@ function authHeaders() {
 }
 
 export async function login(username, password) {
-  const res = await fetch("/wp-json/jwt-auth/v1/token", {
+  const res = await fetch(`${BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   });
   const data = await res.json();
-  if (data.token) {
+  if (data.success) {
     localStorage.setItem("nmc_jwt_token", data.token);
-    localStorage.setItem("nmc_user_naam", data.user_display_name);
-    return { success: true, naam: data.user_display_name };
+    localStorage.setItem("nmc_user_naam", data.naam);
+    localStorage.setItem("nmc_user_role", data.role);
+    return { success: true, naam: data.naam, role: data.role };
   }
-  return { success: false, error: data.message };
+  return { success: false, error: data.error };
 }
 
 export function logout() {
   localStorage.removeItem("nmc_jwt_token");
   localStorage.removeItem("nmc_user_naam");
+  localStorage.removeItem("nmc_user_role");
 }
 
 export async function getUserRole() {
@@ -88,4 +90,42 @@ export async function checkDuplicate(datum, shift, type, meteoroloog) {
   if (!res.ok) return false;
   const data = await res.json();
   return data.exists;
+}
+
+export async function getUsers() {
+  const res = await fetch(`${BASE}/users`, { headers: authHeaders() });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function createUser(user) {
+  const res = await fetch(`${BASE}/users`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(user),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Aanmaken gebruiker mislukt.");
+  }
+  return res.json();
+}
+
+export async function updateUser(id, user) {
+  const res = await fetch(`${BASE}/users/${id}`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify(user),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function deleteUser(id) {
+  const res = await fetch(`${BASE}/users/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
 }

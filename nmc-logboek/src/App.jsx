@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { TABS } from "./constants.js";
-import { logout as apiLogout, saveEntry, getUserRole } from "./api.js";
+import { logout as apiLogout, saveEntry } from "./api.js";
 import LoginWithName from "./components/LoginWithName.jsx";
 import ForecasterForm from "./components/ForecasterForm.jsx";
 import ObserverForm from "./components/ObserverForm.jsx";
 import Overzicht from "./components/Overzicht.jsx";
 import AnalysePanel from "./components/AnalysePanel.jsx";
+import UserAdmin from "./components/UserAdmin.jsx";
 import Toast from "./components/ui/Toast.jsx";
 
 export default function App() {
@@ -19,22 +20,13 @@ export default function App() {
     setTimeout(() => setToast(""), 2500);
   }, []);
 
-  useEffect(() => {
-    if (gebruiker && !role) {
-      getUserRole().then(r => {
-        if (r) {
-          setRole(r);
-          localStorage.setItem("nmc_user_role", r);
-        }
-      });
-    }
-  }, [gebruiker, role]);
-
-  const handleLogin = naam => setGebruiker(naam);
+  const handleLogin = (naam, role) => {
+    setGebruiker(naam);
+    setRole(role);
+  };
 
   const handleLogout = () => {
     apiLogout();
-    localStorage.removeItem("nmc_user_role");
     setGebruiker("");
     setRole("");
   };
@@ -50,7 +42,8 @@ export default function App() {
     }
   };
 
-  const canDelete = role === "editor" || role === "administrator";
+  const canDelete = role === "chef" || role === "admin";
+  const visibleTabs = TABS.filter(t => !t.adminOnly || role === "admin");
 
   const header = (
     <div className="app-header">
@@ -71,7 +64,7 @@ export default function App() {
 
   const nav = (
     <div className="nav">
-      {TABS.map(t => (
+      {visibleTabs.map(t => (
         <button key={t.id} className={`nav-tab${tab === t.id ? " active" : ""}`} onClick={() => setTab(t.id)}>
           {t.label}
         </button>
@@ -80,11 +73,17 @@ export default function App() {
   );
 
   if (!gebruiker) {
-    const current = TABS.find(t => t.id === tab);
+    const current = TABS.find(t => t.id === tab) || TABS[0];
     return (
       <div className="app-shell">
         {header}
-        {nav}
+        <div className="nav">
+          {TABS.filter(t => !t.adminOnly).map(t => (
+            <button key={t.id} className={`nav-tab${tab === t.id ? " active" : ""}`} onClick={() => setTab(t.id)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
         <LoginWithName label={current.loginLabel} onLogin={handleLogin} />
       </div>
     );
@@ -99,6 +98,7 @@ export default function App() {
       {tab === "observer" && <ObserverForm onSave={handleSaveForecaster} gebruiker={gebruiker} />}
       {tab === "overzicht" && <Overzicht canDelete={canDelete} showToast={showToast} />}
       {tab === "analyse" && <AnalysePanel />}
+      {tab === "beheer" && (role === "admin" ? <UserAdmin showToast={showToast} /> : <div className="section"><p>Geen toegang.</p></div>)}
 
       <Toast message={toast} />
     </div>
