@@ -142,6 +142,13 @@ function nmc_admin_required(WP_REST_Request $req) {
     return $u && $u['role'] === 'admin';
 }
 
+// Forecasters mogen alleen 'forecaster'-entries aanmaken, observers alleen
+// 'observer'-entries. Chef/admin mogen beide (volledige controle).
+function nmc_role_can_use_type($role, $type) {
+    if (in_array($role, ['chef', 'admin'], true)) return true;
+    return $role === $type;
+}
+
 // ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
@@ -161,10 +168,13 @@ add_action('rest_api_init', function() {
         'permission_callback' => 'nmc_auth_required',
     ]);
 
+    // Overzicht/Analyse (lezen + bewerken van bestaande entries) is voorbehouden
+    // aan chef/admin — forecasters en observers mogen alleen hun eigen sectie
+    // invullen (POST), niet bladeren of bewerken.
     register_rest_route($ns, '/logboek', [
         'methods'             => 'GET',
         'callback'            => 'nmc_get_logboek',
-        'permission_callback' => 'nmc_auth_required',
+        'permission_callback' => 'nmc_chef_required',
     ]);
 
     register_rest_route($ns, '/logboek', [
@@ -182,7 +192,7 @@ add_action('rest_api_init', function() {
     register_rest_route($ns, '/logboek/(?P<uuid>[a-zA-Z0-9-]+)', [
         'methods'             => 'PUT',
         'callback'            => 'nmc_put_logboek',
-        'permission_callback' => 'nmc_auth_required',
+        'permission_callback' => 'nmc_chef_required',
     ]);
 
     register_rest_route($ns, '/logboek/(?P<uuid>[a-zA-Z0-9-]+)', [
@@ -194,7 +204,7 @@ add_action('rest_api_init', function() {
     register_rest_route($ns, '/personen', [
         'methods'             => 'GET',
         'callback'            => 'nmc_get_personen',
-        'permission_callback' => 'nmc_auth_required',
+        'permission_callback' => 'nmc_chef_required',
     ]);
 
     // Gebruikersbeheer — alleen voor 'admin'-rol, vervangt wp-admin gebruikersbeheer.
@@ -416,6 +426,11 @@ function nmc_post_logboek(WP_REST_Request $req) {
         return new WP_Error('missing_fields', 'datum, shift en type zijn verplicht', ['status' => 400]);
     }
 
+    $user = nmc_current_user($req);
+    if (!nmc_role_can_use_type($user['role'], $body['type'])) {
+        return new WP_Error('forbidden', 'U mag alleen uw eigen sectie invullen.', ['status' => 403]);
+    }
+
     $meteoroloog = $body['type'] === 'forecaster'
         ? ($body['meteoroloog'] ?? '')
         : ($body['personen'][0]['naam'] ?? '');
@@ -493,6 +508,11 @@ function nmc_delete_logboek(WP_REST_Request $req) {
 function nmc_check_duplicate(WP_REST_Request $req) {
     global $wpdb;
     $table = $wpdb->prefix . 'nmc_logboek';
+
+    $user = nmc_current_user($req);
+    if (!nmc_role_can_use_type($user['role'], $req->get_param('type'))) {
+        return new WP_Error('forbidden', 'U mag alleen uw eigen sectie invullen.', ['status' => 403]);
+    }
 
     $existing = $wpdb->get_var($wpdb->prepare(
         "SELECT id FROM $table WHERE datum=%s AND shift=%s AND type=%s AND meteoroloog=%s AND deleted_at IS NULL",

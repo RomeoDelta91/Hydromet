@@ -9,10 +9,14 @@ import AnalysePanel from "./components/AnalysePanel.jsx";
 import UserAdmin from "./components/UserAdmin.jsx";
 import Toast from "./components/ui/Toast.jsx";
 
+function tabsForRole(role) {
+  return TABS.filter(t => t.roles.includes(role));
+}
+
 export default function App() {
-  const [tab, setTab] = useState("forecaster");
   const [gebruiker, setGebruiker] = useState(() => localStorage.getItem("nmc_user_naam") || "");
   const [role, setRole] = useState(() => localStorage.getItem("nmc_user_role") || "");
+  const [tab, setTab] = useState(() => tabsForRole(localStorage.getItem("nmc_user_role") || "")[0]?.id || "");
   const [toast, setToast] = useState("");
 
   const showToast = useCallback(msg => {
@@ -20,15 +24,17 @@ export default function App() {
     setTimeout(() => setToast(""), 2500);
   }, []);
 
-  const handleLogin = (naam, role) => {
+  const handleLogin = (naam, loginRole) => {
     setGebruiker(naam);
-    setRole(role);
+    setRole(loginRole);
+    setTab(tabsForRole(loginRole)[0]?.id || "");
   };
 
   const handleLogout = () => {
     apiLogout();
     setGebruiker("");
     setRole("");
+    setTab("");
   };
 
   const handleSaveForecaster = async entry => {
@@ -43,7 +49,7 @@ export default function App() {
   };
 
   const canDelete = role === "chef" || role === "admin";
-  const visibleTabs = TABS.filter(t => !t.adminOnly || role === "admin");
+  const visibleTabs = tabsForRole(role);
 
   const header = (
     <div className="app-header">
@@ -62,6 +68,15 @@ export default function App() {
     </div>
   );
 
+  if (!gebruiker) {
+    return (
+      <div className="app-shell">
+        {header}
+        <LoginWithName label="NMC Logboek Login" onLogin={handleLogin} />
+      </div>
+    );
+  }
+
   const nav = (
     <div className="nav">
       {visibleTabs.map(t => (
@@ -72,23 +87,6 @@ export default function App() {
     </div>
   );
 
-  if (!gebruiker) {
-    const current = TABS.find(t => t.id === tab) || TABS[0];
-    return (
-      <div className="app-shell">
-        {header}
-        <div className="nav">
-          {TABS.filter(t => !t.adminOnly).map(t => (
-            <button key={t.id} className={`nav-tab${tab === t.id ? " active" : ""}`} onClick={() => setTab(t.id)}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <LoginWithName label={current.loginLabel} onLogin={handleLogin} />
-      </div>
-    );
-  }
-
   return (
     <div className="app-shell">
       {header}
@@ -98,7 +96,7 @@ export default function App() {
       {tab === "observer" && <ObserverForm onSave={handleSaveForecaster} gebruiker={gebruiker} />}
       {tab === "overzicht" && <Overzicht canDelete={canDelete} showToast={showToast} />}
       {tab === "analyse" && <AnalysePanel />}
-      {tab === "beheer" && (role === "admin" ? <UserAdmin showToast={showToast} /> : <div className="section"><p>Geen toegang.</p></div>)}
+      {tab === "beheer" && <UserAdmin showToast={showToast} />}
 
       <Toast message={toast} />
     </div>

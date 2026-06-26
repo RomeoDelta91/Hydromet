@@ -86,12 +86,15 @@ export const EXPORT_SECTIONS = [
   { id: "algemeen", label: "Algemene Byz." },
 ];
 
+// `roles` bepaalt welke ingelogde rol dit tabblad mag zien. Forecasters en
+// observers zijn elk beperkt tot hun eigen sectie; chef/admin hebben volledige
+// controle (Overzicht + Analyse); Beheer is uitsluitend voor admin.
 export const TABS = [
-  { id: "forecaster", label: "Forecaster", loginLabel: "Forecaster Login" },
-  { id: "observer", label: "Observer", loginLabel: "Observer Login" },
-  { id: "overzicht", label: "Overzicht", loginLabel: "Overzicht Login" },
-  { id: "analyse", label: "Analyse", loginLabel: "Analyse Login" },
-  { id: "beheer", label: "Beheer", loginLabel: "Beheer Login", adminOnly: true },
+  { id: "forecaster", label: "Forecaster", loginLabel: "Forecaster Login", roles: ["forecaster", "chef", "admin"] },
+  { id: "observer", label: "Observer", loginLabel: "Observer Login", roles: ["observer", "chef", "admin"] },
+  { id: "overzicht", label: "Overzicht", loginLabel: "Overzicht Login", roles: ["chef", "admin"] },
+  { id: "analyse", label: "Analyse", loginLabel: "Analyse Login", roles: ["chef", "admin"] },
+  { id: "beheer", label: "Beheer", loginLabel: "Beheer Login", roles: ["admin"] },
 ];
 
 export const STORAGE_KEY = "nmc_logboek_v7";
