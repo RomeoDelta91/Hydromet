@@ -1,0 +1,322 @@
+import { useState } from "react";
+import { SHIFTS, MONTHS_NL, WZ_OPTS, SYNOP_TIMES, KLIMA_SHIFT, WIS_TIMES, TAF_TIMES } from "../constants.js";
+import { today, nowId, filterTijdenVoorPersoon } from "../utils.js";
+import { checkDuplicate } from "../api.js";
+import Field from "./ui/Field.jsx";
+import StatusRow from "./ui/StatusRow.jsx";
+import CheckboxGroup from "./ui/CheckboxGroup.jsx";
+
+export const DEF_PERSOON = {
+  naam: "",
+  werktijd_van: "",
+  werktijd_tot: "",
+  synop_gedaan: [],
+  metar_gedaan: [],
+  klima_gedaan: [],
+  taf_gedaan: [],
+  wis_synop_gedaan: [],
+  upload_metar_gedaan: [],
+  digitaal_wx_gedaan: [],
+  digitaal_klima_gedaan: [],
+  digitaal_speci_gedaan: false,
+  digitaal_speci_welke: "",
+  rr_gedaan: false,
+};
+
+const DEF_O_SHIFT = {
+  datum: today(),
+  shift: "",
+  personen: [{ ...DEF_PERSOON }],
+  administratie: "",
+  onderhoud: "",
+  security: "",
+  com_telefoon: "OK",
+  com_internet: "OK",
+  com_amhs: "OK",
+  com_awos: "OK",
+  com_werkmobiel: "OK",
+  com_charger: "OK",
+  inst_conventioneel: "OK",
+  inst_aws: "OK",
+  inst_awos: "OK",
+  inst_radar: "OK",
+  wz_climate: "Niet gemaakt",
+  wz_climate_maand: "",
+  wz_act: "Niet gemaakt",
+  wz_act_maand: "",
+  wz_acs: "Niet gemaakt",
+  wz_acs_maand: "",
+  wz_temp: "Niet gemaakt",
+  wz_temp_dag: "",
+  wz_temp_tijd: "",
+  byz_dienstauto: "",
+  byz_dienstbus: "",
+  byz_hydrofoor: "",
+  byz_stroom: "",
+  byz_swm: "",
+  byz_airlines: "",
+  byz_operations: "",
+  byz_atc: "",
+  byz_toren: "",
+  byz_algemeen: "",
+};
+
+function WzRow({ label, field_status, field_maand, val_status, val_maand, onChange, isTemp, val_dag, val_tijd }) {
+  return (
+    <div style={{ padding: "8px 0", borderBottom: "1px solid var(--paperMid)" }}>
+      <div className="status-row" style={{ borderBottom: "none", paddingBottom: 0 }}>
+        <label>{label}</label>
+        <select value={val_status} onChange={e => onChange(field_status, e.target.value)}>{WZ_OPTS.map(o => <option key={o}>{o}</option>)}</select>
+      </div>
+      {val_status === "Gemaakt" && !isTemp && (
+        <div style={{ marginTop: 6 }}>
+          <select value={val_maand} onChange={e => onChange(field_maand, e.target.value)}
+            style={{ border: "1px solid var(--paperMid)", borderRadius: 6, padding: "6px 8px", fontSize: 12, fontFamily: "Inter,sans-serif", color: "var(--ink)", background: "var(--paper)", width: "100%" }}>
+            <option value="">Selecteer maand…</option>
+            {MONTHS_NL.map(m => <option key={m}>{m}</option>)}
+          </select>
+        </div>
+      )}
+      {val_status === "Gemaakt" && isTemp && (
+        <div style={{ marginTop: 6, display: "flex", gap: 8 }}>
+          <input type="date" value={val_dag} onChange={e => onChange(field_maand, e.target.value)}
+            style={{ border: "1px solid var(--paperMid)", borderRadius: 6, padding: "6px 8px", fontSize: 12, flex: 1, fontFamily: "Inter,sans-serif", color: "var(--ink)", background: "var(--paper)" }} />
+          <input type="time" value={val_tijd} onChange={e => onChange("wz_temp_tijd", e.target.value)}
+            style={{ border: "1px solid var(--paperMid)", borderRadius: 6, padding: "6px 8px", fontSize: 12, flex: 1, fontFamily: "IBM Plex Mono,monospace", color: "var(--ink)", background: "var(--paper)" }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ObserverForm({ onSave, gebruiker, initial }) {
+  const [f, setF] = useState(initial ? { ...DEF_O_SHIFT, ...initial } : { ...DEF_O_SHIFT, datum: today() });
+  const [errors, setErrors] = useState({});
+  const [activePersoonTab, setActivePersoonTab] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const upd = (k, v) => setF(p => ({ ...p, [k]: v }));
+
+  const shift = f.shift;
+  const synopTimes = shift && SYNOP_TIMES[shift] ? SYNOP_TIMES[shift] : [];
+  const klimaTimes = shift && KLIMA_SHIFT[shift] ? KLIMA_SHIFT[shift] : [];
+  const wisTimes = shift && WIS_TIMES[shift] ? WIS_TIMES[shift] : [];
+  const tafTimes = shift && TAF_TIMES[shift] ? TAF_TIMES[shift] : [];
+  const isOchtend = shift === SHIFTS[0];
+
+  const addPersoon = () => {
+    if (f.personen.length >= 4) return;
+    setF(prev => ({ ...prev, personen: [...prev.personen, { ...DEF_PERSOON }] }));
+  };
+  const removePersoon = idx => {
+    if (f.personen.length <= 1) return;
+    setF(prev => ({ ...prev, personen: prev.personen.filter((_, i) => i !== idx) }));
+    setActivePersoonTab(t => (t >= f.personen.length - 1 ? f.personen.length - 2 : t));
+  };
+  const updPersoon = (idx, key, val) => {
+    setF(prev => {
+      const arr = [...prev.personen];
+      arr[idx] = { ...arr[idx], [key]: val };
+      return { ...prev, personen: arr };
+    });
+  };
+
+  const validate = () => {
+    const e = {};
+    if (!f.datum) e.datum = true;
+    if (!f.shift) e.shift = true;
+    f.personen.forEach((p, idx) => {
+      if (!p.naam.trim()) e[`persoon_naam_${idx}`] = true;
+    });
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const submit = async () => {
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      if (!f.id) {
+        const meteoroloog = f.personen[0]?.naam || "";
+        const exists = await checkDuplicate(f.datum, f.shift, "observer", meteoroloog);
+        if (exists && !window.confirm("Er bestaat al een logboek voor deze datum/shift/persoon. Toch doorgaan?")) {
+          setSaving(false);
+          return;
+        }
+      }
+      await onSave({ ...f, type: "observer", id: f.id || nowId(), ts: Date.now(), ingevuld_door: gebruiker });
+      setF({ ...DEF_O_SHIFT, datum: today() });
+      setErrors({});
+      setActivePersoonTab(0);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const reqStyle = k => (errors[k] ? { borderColor: "var(--danger)" } : {});
+
+  const persoonActief = f.personen[activePersoonTab] || f.personen[0];
+  const idxActief = f.personen.indexOf(persoonActief);
+  const synopTimesP = filterTijdenVoorPersoon(synopTimes, persoonActief.werktijd_van, persoonActief.werktijd_tot);
+  const klimaTimesP = filterTijdenVoorPersoon(klimaTimes, persoonActief.werktijd_van, persoonActief.werktijd_tot);
+  const wisTimesP = filterTijdenVoorPersoon(wisTimes, persoonActief.werktijd_van, persoonActief.werktijd_tot);
+  const tafTimesP = filterTijdenVoorPersoon(tafTimes, persoonActief.werktijd_van, persoonActief.werktijd_tot);
+
+  return (
+    <div className="section">
+      <div className="card">
+        <div className="card-header"><span>📋 Basisgegevens</span></div>
+        <div className="card-body">
+          <div className="field-grid">
+            <div className="field"><label>Datum {errors.datum && <span style={{ color: "var(--danger)" }}>*</span>}</label><input type="date" value={f.datum} onChange={e => upd("datum", e.target.value)} style={reqStyle("datum")} /></div>
+            <div className="field"><label>Shift {errors.shift && <span style={{ color: "var(--danger)" }}>*</span>}</label><select value={f.shift} onChange={e => upd("shift", e.target.value)} style={reqStyle("shift")}><option value="">Selecteer…</option>{SHIFTS.map(s => <option key={s}>{s}</option>)}</select></div>
+          </div>
+          <div className="field-grid">
+            <Field label="Administratie" field="administratie" val={f.administratie} onChange={upd} />
+            <Field label="Onderhoudmedewerker" field="onderhoud" val={f.onderhoud} onChange={upd} />
+            <Field label="Security" field="security" val={f.security} onChange={upd} />
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>👥 Aanwezige adjunct-meteorologen</span></div>
+        <div className="card-body">
+          {f.personen.map((p, idx) => (
+            <div key={idx} className="persoon-block">
+              <div className="persoon-block-head">
+                <span>Persoon {idx + 1}</span>
+                {idx > 0 && <button type="button" className="btn btn-danger" onClick={() => removePersoon(idx)}>× Verwijder</button>}
+              </div>
+              <div className="field-grid single">
+                <div className="field">
+                  <label>Naam {errors[`persoon_naam_${idx}`] && <span style={{ color: "var(--danger)" }}>*</span>}</label>
+                  <input value={p.naam} onChange={e => updPersoon(idx, "naam", e.target.value)} style={errors[`persoon_naam_${idx}`] ? { borderColor: "var(--danger)" } : {}} placeholder="Volledige naam" />
+                </div>
+              </div>
+              <div className="field-grid">
+                <div className="field"><label>Werktijd van (LT)</label><input type="time" value={p.werktijd_van} onChange={e => updPersoon(idx, "werktijd_van", e.target.value)} /></div>
+                <div className="field"><label>Werktijd tot (LT)</label><input type="time" value={p.werktijd_tot} onChange={e => updPersoon(idx, "werktijd_tot", e.target.value)} /></div>
+              </div>
+            </div>
+          ))}
+          {f.personen.length < 4 && (
+            <button type="button" className="btn btn-secondary" onClick={addPersoon}>+ Voeg persoon toe</button>
+          )}
+          {Object.keys(errors).some(k => k.startsWith("persoon_naam_")) && <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 8 }}>Vul de naam van elke persoon in.</p>}
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>📡 Communicatie</span></div>
+        <div className="card-body">
+          <StatusRow label="Telefoon" field="com_telefoon" val={f.com_telefoon} onChange={upd} />
+          <StatusRow label="Internet" field="com_internet" val={f.com_internet} onChange={upd} />
+          <StatusRow label="AMHS" field="com_amhs" val={f.com_amhs} onChange={upd} />
+          <StatusRow label="AWOS" field="com_awos" val={f.com_awos} onChange={upd} />
+          <StatusRow label="Werkmobiel" field="com_werkmobiel" val={f.com_werkmobiel} onChange={upd} />
+          <StatusRow label="Charger" field="com_charger" val={f.com_charger} onChange={upd} />
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>🛰 Instrumenten</span></div>
+        <div className="card-body">
+          <StatusRow label="Conventioneel" field="inst_conventioneel" val={f.inst_conventioneel} onChange={upd} />
+          <StatusRow label="AWS" field="inst_aws" val={f.inst_aws} onChange={upd} />
+          <StatusRow label="AWOS" field="inst_awos" val={f.inst_awos} onChange={upd} />
+          <StatusRow label="RADAR" field="inst_radar" val={f.inst_radar} onChange={upd} />
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>📊 Werkzaamheden</span></div>
+        <div className="card-body">
+          {!shift && <p style={{ fontSize: 12, color: "var(--inkLo)", marginBottom: 12 }}>Selecteer eerst een shift.</p>}
+          {shift && f.personen.length > 1 && (
+            <div className="persoon-tabs">
+              {f.personen.map((p, idx) => (
+                <button key={idx} type="button" className={`persoon-tab${activePersoonTab === idx ? " active" : ""}`} onClick={() => setActivePersoonTab(idx)}>
+                  {p.naam || `Persoon ${idx + 1}`}
+                  {p.werktijd_van && p.werktijd_tot ? ` (${p.werktijd_van}–${p.werktijd_tot})` : ""}
+                </button>
+              ))}
+            </div>
+          )}
+          {shift && (
+            <>
+              <div className="time-block"><div className="time-block-label">Synop</div>{synopTimesP.length > 0 ? <CheckboxGroup options={synopTimesP} selected={persoonActief.synop_gedaan} onChange={v => updPersoon(idxActief, "synop_gedaan", v)} hint="vink aan welke gemaakt" /> : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}</div>
+              <div className="time-block"><div className="time-block-label">Metars</div>{synopTimesP.length > 0 ? <CheckboxGroup options={synopTimesP} selected={persoonActief.metar_gedaan} onChange={v => updPersoon(idxActief, "metar_gedaan", v)} hint="vink aan welke gemaakt" /> : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}</div>
+              <div className="time-block"><div className="time-block-label">Klima waarneming</div>{klimaTimesP.length > 0 ? <CheckboxGroup options={klimaTimesP} selected={persoonActief.klima_gedaan} onChange={v => updPersoon(idxActief, "klima_gedaan", v)} hint="vink aan welke gedaan" /> : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>{shift ? "Geen klima waarneming in dit tijdvenster." : "Selecteer een shift."}</p>}</div>
+              <div className="time-block"><div className="time-block-label">Upload Metar website</div>{synopTimesP.length > 0 ? <CheckboxGroup options={synopTimesP} selected={persoonActief.upload_metar_gedaan} onChange={v => updPersoon(idxActief, "upload_metar_gedaan", v)} hint="vink aan welke geüpload" /> : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}</div>
+              <div className="time-block"><div className="time-block-label">Digitale invoer WX website</div>{synopTimesP.length > 0 ? <CheckboxGroup options={synopTimesP} selected={persoonActief.digitaal_wx_gedaan} onChange={v => updPersoon(idxActief, "digitaal_wx_gedaan", v)} hint="vink aan welke ingevoerd" /> : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}</div>
+              <div className="time-block"><div className="time-block-label">Digitale invoer Klima website</div>{klimaTimesP.length > 0 ? <CheckboxGroup options={klimaTimesP} selected={persoonActief.digitaal_klima_gedaan} onChange={v => updPersoon(idxActief, "digitaal_klima_gedaan", v)} hint="vink aan welke ingevoerd" /> : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>{shift ? "Geen klima invoer in dit tijdvenster." : "Selecteer een shift."}</p>}</div>
+              <div className="time-block">
+                <div className="time-block-label">Digitale invoer SPECI website</div>
+                <label className={`cb-item${persoonActief.digitaal_speci_gedaan ? " checked" : ""}`} style={{ display: "inline-flex", marginBottom: 8 }}>
+                  <input type="checkbox" checked={persoonActief.digitaal_speci_gedaan} onChange={e => updPersoon(idxActief, "digitaal_speci_gedaan", e.target.checked)} />SPECI's ingevoerd deze shift
+                </label>
+                {persoonActief.digitaal_speci_gedaan && <Field label="Welke SPECI's ingevoerd?" field="digitaal_speci_welke" val={persoonActief.digitaal_speci_welke} onChange={(k, v) => updPersoon(idxActief, k, v)} type="textarea" />}
+              </div>
+              <div className="time-block"><div className="time-block-label">Upload Synop WIS 2.0</div>{wisTimesP.length > 0 ? <CheckboxGroup options={wisTimesP} selected={persoonActief.wis_synop_gedaan} onChange={v => updPersoon(idxActief, "wis_synop_gedaan", v)} hint="vink aan welke geüpload" /> : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}</div>
+              <div className="time-block"><div className="time-block-label">Verzenden TAF</div>{tafTimesP.length > 0 ? <CheckboxGroup options={tafTimesP} selected={persoonActief.taf_gedaan} onChange={v => updPersoon(idxActief, "taf_gedaan", v)} hint="vink aan welke verzonden" /> : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}</div>
+              <div className="time-block">
+                <div className="time-block-label">Verzenden RR naar Klima-afdeling</div>
+                {isOchtend ? (
+                  <label className={`cb-item${persoonActief.rr_gedaan ? " checked" : ""}`} style={{ display: "inline-flex" }}>
+                    <input type="checkbox" checked={persoonActief.rr_gedaan} onChange={e => updPersoon(idxActief, "rr_gedaan", e.target.checked)} />Verzonden
+                  </label>
+                ) : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Alleen van toepassing bij ochtenddienst.</p>}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>📁 Overige Werkzaamheden</span></div>
+        <div className="card-body">
+          <WzRow label="Climate Report" field_status="wz_climate" field_maand="wz_climate_maand" val_status={f.wz_climate} val_maand={f.wz_climate_maand} onChange={upd} />
+          <WzRow label="ACT" field_status="wz_act" field_maand="wz_act_maand" val_status={f.wz_act} val_maand={f.wz_act_maand} onChange={upd} />
+          <WzRow label="ACS" field_status="wz_acs" field_maand="wz_acs_maand" val_status={f.wz_acs} val_maand={f.wz_acs_maand} onChange={upd} />
+          <WzRow label="Temp" field_status="wz_temp" field_maand="wz_temp_dag" val_status={f.wz_temp} val_maand={f.wz_temp_dag} val_dag={f.wz_temp_dag} val_tijd={f.wz_temp_tijd} onChange={upd} isTemp={true} />
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>🚗 Bijzonderheden – Logistiek</span></div>
+        <div className="card-body">
+          <div className="field-grid">
+            <Field label="Dienstauto" field="byz_dienstauto" val={f.byz_dienstauto} onChange={upd} />
+            <Field label="Dienstbus" field="byz_dienstbus" val={f.byz_dienstbus} onChange={upd} />
+            <Field label="Hydrofoor" field="byz_hydrofoor" val={f.byz_hydrofoor} onChange={upd} />
+            <Field label="Stroomonderbrekingen" field="byz_stroom" val={f.byz_stroom} onChange={upd} />
+            <Field label="Levering SWM water" field="byz_swm" val={f.byz_swm} onChange={upd} />
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>✈️ Bijzonderheden – Operationeel</span></div>
+        <div className="card-body">
+          <div className="field-grid">
+            <Field label="Airlines" field="byz_airlines" val={f.byz_airlines} onChange={upd} />
+            <Field label="Operations" field="byz_operations" val={f.byz_operations} onChange={upd} />
+            <Field label="ATC" field="byz_atc" val={f.byz_atc} onChange={upd} />
+            <Field label="Toren" field="byz_toren" val={f.byz_toren} onChange={upd} />
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>📝 Algemene Bijzonderheden</span></div>
+        <div className="card-body"><div className="field-grid single"><Field label="" field="byz_algemeen" val={f.byz_algemeen} onChange={upd} type="textarea" /></div></div>
+      </div>
+
+      <div className="ingevuld-bar">Ingevuld door: {gebruiker}</div>
+      <button className="btn btn-primary" onClick={submit} disabled={saving} style={{ borderRadius: "0 0 8px 8px" }}>
+        {saving ? "Opslaan…" : "✅ Logboek opslaan"}
+      </button>
+      <div style={{ height: 16 }} />
+    </div>
+  );
+}
