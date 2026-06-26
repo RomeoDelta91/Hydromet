@@ -49,6 +49,13 @@ add_action('rest_api_init', function() {
         'callback'            => 'nmc_get_me',
         'permission_callback' => 'nmc_auth_required',
     ]);
+
+    // GET overzicht per persoon (adjunct-meteoroloog) — query op naam/periode
+    register_rest_route($ns, '/personen', [
+        'methods'             => 'GET',
+        'callback'            => 'nmc_get_personen',
+        'permission_callback' => 'nmc_auth_required',
+    ]);
 });
 
 function nmc_auth_required() {
@@ -70,6 +77,53 @@ function nmc_get_me() {
         'naam' => $user->display_name,
         'role' => $role,
     ]);
+}
+
+// Vervangt de personen-rijen voor een logboek-entry door de huidige $personen array.
+function nmc_sync_personen($logboek_id, $personen) {
+    global $wpdb;
+    $table = $wpdb->prefix . 'nmc_logboek_personen';
+
+    $wpdb->delete($table, ['logboek_id' => $logboek_id]);
+
+    if (empty($personen) || !is_array($personen)) return;
+
+    foreach ($personen as $p) {
+        if (empty($p['naam'])) continue;
+        $wpdb->insert($table, [
+            'logboek_id'   => $logboek_id,
+            'naam'         => $p['naam'],
+            'werktijd_van' => $p['werktijd_van'] ?? '',
+            'werktijd_tot' => $p['werktijd_tot'] ?? '',
+            'synop_totaal' => count($p['synop_gedaan'] ?? []),
+            'metar_totaal' => count($p['metar_gedaan'] ?? []),
+            'klima_totaal' => count($p['klima_gedaan'] ?? []),
+            'taf_totaal'   => count($p['taf_gedaan'] ?? []),
+        ]);
+    }
+}
+
+function nmc_get_personen(WP_REST_Request $req) {
+    global $wpdb;
+    $table       = $wpdb->prefix . 'nmc_logboek_personen';
+    $logTable    = $wpdb->prefix . 'nmc_logboek';
+    $where       = ['l.deleted_at IS NULL'];
+    $params      = [];
+
+    if ($req->get_param('naam'))  { $where[] = 'p.naam = %s';      $params[] = $req->get_param('naam'); }
+    if ($req->get_param('van'))   { $where[] = 'l.datum >= %s';    $params[] = $req->get_param('van'); }
+    if ($req->get_param('tot'))   { $where[] = 'l.datum <= %s';    $params[] = $req->get_param('tot'); }
+    if ($req->get_param('maand')) { $where[] = 'l.datum LIKE %s';  $params[] = $req->get_param('maand') . '-%'; }
+
+    $sql = "SELECT p.*, l.datum, l.shift, l.uuid AS logboek_uuid
+            FROM $table p
+            JOIN $logTable l ON l.id = p.logboek_id
+            WHERE " . implode(' AND ', $where) . "
+            ORDER BY l.datum DESC";
+    if (!empty($params)) {
+        $sql = $wpdb->prepare($sql, $params);
+    }
+    return rest_ensure_response($wpdb->get_results($sql, ARRAY_A));
 }
 
 function nmc_get_logboek(WP_REST_Request $req) {
@@ -132,6 +186,11 @@ function nmc_post_logboek(WP_REST_Request $req) {
     if ($result === false) {
         return new WP_Error('db_error', $wpdb->last_error, ['status' => 500]);
     }
+
+    if ($body['type'] === 'observer') {
+        nmc_sync_personen($wpdb->insert_id, $body['personen'] ?? []);
+    }
+
     return rest_ensure_response(['success' => true, 'id' => $wpdb->insert_id]);
 }
 
@@ -149,6 +208,14 @@ function nmc_put_logboek(WP_REST_Request $req) {
 
     if ($result === false) return new WP_Error('db_error', $wpdb->last_error, ['status' => 500]);
     if ($result === 0)     return new WP_Error('not_found', 'Entry niet gevonden', ['status' => 404]);
+
+    if (($body['type'] ?? '') === 'observer') {
+        $logboek_id = $wpdb->get_var($wpdb->prepare("SELECT id FROM $table WHERE uuid=%s", $uuid));
+        if ($logboek_id) {
+            nmc_sync_personen($logboek_id, $body['personen'] ?? []);
+        }
+    }
+
     return rest_ensure_response(['success' => true]);
 }
 
