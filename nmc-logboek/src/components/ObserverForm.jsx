@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { SHIFTS, MONTHS_NL, WZ_OPTS, SYNOP_TIMES, KLIMA_SHIFT, WIS_TIMES, TAF_TIMES } from "../constants.js";
+import { SHIFTS, MONTHS_NL, WZ_OPTS, SYNOP_TIMES, KLIMA_SHIFT, WIS_TIMES, TAF_TIMES, MAAIWERK_OPTS } from "../constants.js";
 import { today, nowId, filterTijdenVoorPersoon } from "../utils.js";
 import { checkDuplicate } from "../api.js";
 import Field from "./ui/Field.jsx";
 import StatusRow from "./ui/StatusRow.jsx";
 import CheckboxGroup from "./ui/CheckboxGroup.jsx";
+import RepeatText from "./ui/RepeatText.jsx";
+import Ziekmeldingen from "./ui/Ziekmeldingen.jsx";
+import Aanvragen from "./ui/Aanvragen.jsx";
 
 export const DEF_PERSOON = {
   naam: "",
@@ -27,9 +30,9 @@ const DEF_O_SHIFT = {
   datum: today(),
   shift: "",
   personen: [{ ...DEF_PERSOON }],
-  administratie: "",
-  onderhoud: "",
-  security: "",
+  administratie: [""],
+  onderhoud: [""],
+  security: [""],
   com_telefoon: "OK",
   com_internet: "OK",
   com_amhs: "OK",
@@ -54,12 +57,27 @@ const DEF_O_SHIFT = {
   byz_hydrofoor: "",
   byz_stroom: "",
   byz_swm: "",
+  byz_maaiwerkzaamheden: "",
+  ziekmeldingen: [],
+  aanvragen: [],
   byz_airlines: "",
   byz_operations: "",
   byz_atc: "",
   byz_toren: "",
   byz_algemeen: "",
 };
+
+// Oudere entries hadden administratie/onderhoud/security als los tekstveld en
+// geen ziekmeldingen/aanvragen. Normaliseer die naar de nieuwe (array-)vorm.
+function normalizeInitial(initial) {
+  const merged = initial ? { ...DEF_O_SHIFT, ...initial } : { ...DEF_O_SHIFT, datum: today() };
+  ["administratie", "onderhoud", "security"].forEach(k => {
+    if (!Array.isArray(merged[k])) merged[k] = merged[k] ? [merged[k]] : [""];
+  });
+  if (!Array.isArray(merged.ziekmeldingen)) merged.ziekmeldingen = [];
+  if (!Array.isArray(merged.aanvragen)) merged.aanvragen = [];
+  return merged;
+}
 
 function WzRow({ label, field_status, field_maand, val_status, val_maand, onChange, isTemp, val_dag, val_tijd }) {
   return (
@@ -90,7 +108,7 @@ function WzRow({ label, field_status, field_maand, val_status, val_maand, onChan
 }
 
 export default function ObserverForm({ onSave, gebruiker, initial }) {
-  const [f, setF] = useState(initial ? { ...DEF_O_SHIFT, ...initial } : { ...DEF_O_SHIFT, datum: today() });
+  const [f, setF] = useState(() => normalizeInitial(initial));
   const [errors, setErrors] = useState({});
   const [activePersoonTab, setActivePersoonTab] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -171,9 +189,9 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
             <div className="field"><label>Shift {errors.shift && <span style={{ color: "var(--danger)" }}>*</span>}</label><select value={f.shift} onChange={e => upd("shift", e.target.value)} style={reqStyle("shift")}><option value="">Selecteer…</option>{SHIFTS.map(s => <option key={s}>{s}</option>)}</select></div>
           </div>
           <div className="field-grid">
-            <Field label="Administratie" field="administratie" val={f.administratie} onChange={upd} />
-            <Field label="Onderhoudmedewerker" field="onderhoud" val={f.onderhoud} onChange={upd} />
-            <Field label="Security" field="security" val={f.security} onChange={upd} />
+            <RepeatText label="Administratie" value={f.administratie} onChange={v => upd("administratie", v)} placeholder="Naam" />
+            <RepeatText label="Onderhoudmedewerker" value={f.onderhoud} onChange={v => upd("onderhoud", v)} placeholder="Naam" />
+            <RepeatText label="Security" value={f.security} onChange={v => upd("security", v)} placeholder="Naam" />
           </div>
         </div>
       </div>
@@ -291,7 +309,20 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
             <Field label="Hydrofoor" field="byz_hydrofoor" val={f.byz_hydrofoor} onChange={upd} />
             <Field label="Stroomonderbrekingen" field="byz_stroom" val={f.byz_stroom} onChange={upd} />
             <Field label="Levering SWM water" field="byz_swm" val={f.byz_swm} onChange={upd} />
+            <div className="field">
+              <label>Maaiwerkzaamheden</label>
+              <select value={f.byz_maaiwerkzaamheden} onChange={e => upd("byz_maaiwerkzaamheden", e.target.value)}>
+                {MAAIWERK_OPTS.map(o => <option key={o} value={o}>{o === "" ? "N.v.t." : o}</option>)}
+              </select>
+            </div>
           </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>🤒 Ziektemeldingen</span></div>
+        <div className="card-body">
+          <Ziekmeldingen value={f.ziekmeldingen} onChange={v => upd("ziekmeldingen", v)} />
         </div>
       </div>
 
@@ -304,6 +335,13 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
             <Field label="ATC" field="byz_atc" val={f.byz_atc} onChange={upd} />
             <Field label="Toren" field="byz_toren" val={f.byz_toren} onChange={upd} />
           </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>📅 Aanvragen</span></div>
+        <div className="card-body">
+          <Aanvragen value={f.aanvragen} onChange={v => upd("aanvragen", v)} />
         </div>
       </div>
 

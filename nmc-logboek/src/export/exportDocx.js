@@ -39,13 +39,13 @@ function statusRows(labels, entry) {
 
 function basisgegevensSection(e) {
   const isF = e.type === "forecaster";
+  const personenNamen = (e.personen || []).map(p => p.naam).filter(Boolean).join(", ");
   const rows = [
     kv("Datum", e.datum),
     kv("Shift", e.shift),
-    kv(isF ? "Meteoroloog" : "Adjunct-meteorologen", isF ? e.meteoroloog : (e.personen || []).map(p => p.naam).filter(Boolean).join(", ")),
+    kv(isF ? "Meteoroloog" : "Adjunct-meteorologen", isF ? (personenNamen || e.meteoroloog || "") : personenNamen),
   ];
   if (isF) {
-    rows.push(kv("Werktijd", `${e.werktijd_van || "?"} - ${e.werktijd_tot || "?"}`));
     if (e.verwachtingen) rows.push(kv("Verwachtingen uitgebracht", e.verwachtingen));
   }
   rows.push(kv("Ingevuld door", e.ingevuld_door || ""));
@@ -94,15 +94,33 @@ function notamSection(e) {
 }
 
 function bijzonderhedenSection(e) {
-  const isF = e.type === "forecaster";
-  const fields = isF
-    ? [["Dienstauto", e.byz_dienstauto], ["Dienstbus", e.byz_dienstbus], ["Hydrofoor", e.byz_hydrofoor],
-       ["Stroomonderbrekingen", e.byz_stroom], ["Levering SWM water", e.byz_swm],
-       ["Airlines", e.byz_airlines], ["Operations", e.byz_operations], ["ATC", e.byz_atc], ["Toren", e.byz_toren]]
-    : [];
+  const fields = [
+    ["Dienstauto", e.byz_dienstauto], ["Dienstbus", e.byz_dienstbus], ["Hydrofoor", e.byz_hydrofoor],
+    ["Stroomonderbrekingen", e.byz_stroom], ["Levering SWM water", e.byz_swm], ["Maaiwerkzaamheden", e.byz_maaiwerkzaamheden],
+    ["Airlines", e.byz_airlines], ["Operations", e.byz_operations], ["ATC", e.byz_atc], ["Toren", e.byz_toren],
+  ];
   const rows = fields.filter(([, v]) => v).map(([l, v]) => kv(l, v));
   const blocks = [];
   if (rows.length) blocks.push(heading("Bijzonderheden", HeadingLevel.HEADING_3), table(rows));
+
+  const ziek = (e.ziekmeldingen || []).filter(z => z.tijd || z.naam || z.periode);
+  if (ziek.length) {
+    blocks.push(heading("Ziektemeldingen", HeadingLevel.HEADING_3));
+    blocks.push(table([
+      new TableRow({ children: [cell("Tijd", { bold: true, width: 20 }), cell("Naam", { bold: true, width: 40 }), cell("Periode", { bold: true, width: 40 })] }),
+      ...ziek.map(z => new TableRow({ children: [cell(z.tijd), cell(z.naam), cell(z.periode)] })),
+    ]));
+  }
+
+  const aanvr = (e.aanvragen || []).filter(a => a.type || a.naam || a.periode);
+  if (aanvr.length) {
+    blocks.push(heading("Aanvragen", HeadingLevel.HEADING_3));
+    blocks.push(table([
+      new TableRow({ children: [cell("Type", { bold: true, width: 20 }), cell("Naam", { bold: true, width: 40 }), cell("Periode", { bold: true, width: 40 })] }),
+      ...aanvr.map(a => new TableRow({ children: [cell(a.type), cell(a.naam), cell(a.periode)] })),
+    ]));
+  }
+
   if (e.byz_algemeen) {
     blocks.push(new Paragraph({ text: "Algemeen", heading: HeadingLevel.HEADING_4 }));
     blocks.push(new Paragraph({ text: e.byz_algemeen }));
@@ -116,7 +134,7 @@ function entrySections(e, sectionIds) {
     ? { com_telefoon: "Telefoon", com_internet: "Internet", com_amhs: "AMHS", com_awos: "AWOS" }
     : { com_telefoon: "Telefoon", com_internet: "Internet", com_amhs: "AMHS", com_awos: "AWOS", com_werkmobiel: "Werkmobiel", com_charger: "Charger" };
   const instLabels = isF
-    ? { inst_aws: "AWS", inst_awos: "AWOS", inst_pc_lhb: "PC LHB", inst_radar: "RADAR", inst_werkmobiel: "Werkmobiel", inst_charger: "Charger" }
+    ? { inst_aws: "AWS", inst_awos: "AWOS", inst_pc_lhb: "PC LHB", inst_radar: "RADAR" }
     : { inst_conventioneel: "Conventioneel", inst_aws: "AWS", inst_awos: "AWOS", inst_radar: "RADAR" };
 
   const sec = id => sectionIds.includes(id);

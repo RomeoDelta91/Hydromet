@@ -7,8 +7,6 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete }) {
     e.com_awos !== "OK" && `AWOS: ${e.com_awos}`,
     !isF && e.com_werkmobiel !== "OK" && `Werkmobiel: ${e.com_werkmobiel}`,
     !isF && e.com_charger !== "OK" && `Charger: ${e.com_charger}`,
-    isF && e.inst_werkmobiel !== "OK" && `Werkmobiel: ${e.inst_werkmobiel}`,
-    isF && e.inst_charger !== "OK" && `Charger: ${e.inst_charger}`,
     e.inst_aws !== "OK" && `AWS: ${e.inst_aws}`,
     e.inst_awos !== "OK" && `AWOS inst: ${e.inst_awos}`,
     e.inst_radar !== "OK" && `RADAR: ${e.inst_radar}`,
@@ -16,7 +14,8 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete }) {
     !isF && e.inst_conventioneel !== "OK" && `Conventioneel: ${e.inst_conventioneel}`,
   ].filter(Boolean);
 
-  const namen = isF ? e.meteoroloog : (e.personen || []).map(p => p.naam).filter(Boolean).join(", ");
+  const personenNamen = (e.personen || []).map(p => p.naam).filter(Boolean).join(", ");
+  const namen = isF ? (personenNamen || e.meteoroloog) : personenNamen;
 
   const ef = (label, val) => {
     if (!val || val === "" || val === "OK" || (Array.isArray(val) && val.length === 0)) return null;
@@ -68,6 +67,17 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete }) {
             </div>
           );
         })}
+        {ef("Maaiwerkzaamheden", e.byz_maaiwerkzaamheden)}
+        {(e.ziekmeldingen || []).length > 0 && (
+          <div className="ef-block"><div className="ef-label">Ziektemeldingen</div><div className="ef-value">
+            {e.ziekmeldingen.map((z, i) => `${[z.tijd, z.naam, z.periode].filter(Boolean).join(" — ")}`).filter(Boolean).join("\n")}
+          </div></div>
+        )}
+        {(e.aanvragen || []).length > 0 && (
+          <div className="ef-block"><div className="ef-label">Aanvragen</div><div className="ef-value">
+            {e.aanvragen.map(a => `${[a.type, a.naam, a.periode].filter(Boolean).join(" — ")}`).filter(Boolean).join("\n")}
+          </div></div>
+        )}
         {ef("Algemeen", e.byz_algemeen)}
         {e.ingevuld_door && <div style={{ fontSize: 11, color: "var(--inkLo)", fontFamily: "IBM Plex Mono,monospace" }}>Ingevuld door: {e.ingevuld_door}</div>}
       </div>

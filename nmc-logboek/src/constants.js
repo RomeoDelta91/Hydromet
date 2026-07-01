@@ -7,6 +7,12 @@ export const SHIFTS = [
 export const STATUS_OPTS = ["OK", "Storing", "Defect", "Uitgevallen", "N.v.t."];
 export const WZ_OPTS = ["Niet gemaakt", "Gemaakt", "N.v.t."];
 
+// Maaiwerkzaamheden (Logistiek): uitgevoerd door LHB of intern.
+export const MAAIWERK_OPTS = ["", "LHB", "Intern"];
+
+// Aanvragen: soorten die een medewerker kan indienen.
+export const AANVRAAG_OPTS = ["Compensatie", "Verlof"];
+
 export const MONTHS_NL = [
   "Januari", "Februari", "Maart", "April", "Mei", "Juni",
   "Juli", "Augustus", "September", "Oktober", "November", "December",
@@ -64,7 +70,7 @@ export const WZ_LABELS = {
 export const STATUS_KEYS_COMM_OBS = ["com_telefoon", "com_internet", "com_amhs", "com_awos", "com_werkmobiel", "com_charger"];
 export const STATUS_KEYS_INST_OBS = ["inst_conventioneel", "inst_aws", "inst_awos", "inst_radar"];
 export const STATUS_KEYS_COMM_F = ["com_telefoon", "com_internet", "com_amhs", "com_awos"];
-export const STATUS_KEYS_INST_F = ["inst_aws", "inst_awos", "inst_pc_lhb", "inst_radar", "inst_werkmobiel", "inst_charger"];
+export const STATUS_KEYS_INST_F = ["inst_aws", "inst_awos", "inst_pc_lhb", "inst_radar"];
 
 export const SYSTEM_LABELS = {
   com_telefoon: "Telefoon", com_internet: "Internet", com_amhs: "AMHS", com_awos: "AWOS comm.",

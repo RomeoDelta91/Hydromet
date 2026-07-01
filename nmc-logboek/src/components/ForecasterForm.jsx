@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { SHIFTS, NOTAM_SHIFTS, WEB_PRODUCTS } from "../constants.js";
+import { SHIFTS, NOTAM_SHIFTS, WEB_PRODUCTS, MAAIWERK_OPTS } from "../constants.js";
 import { today, nowId } from "../utils.js";
 import { checkDuplicate } from "../api.js";
 import Field from "./ui/Field.jsx";
 import StatusRow from "./ui/StatusRow.jsx";
+import Ziekmeldingen from "./ui/Ziekmeldingen.jsx";
+import Aanvragen from "./ui/Aanvragen.jsx";
+
+const DEF_PERSOON_F = { naam: "" };
 
 const DEF_F = {
   datum: today(),
   shift: "",
-  meteoroloog: "",
-  werktijd_van: "",
-  werktijd_tot: "",
+  personen: [{ ...DEF_PERSOON_F }],
   verwachtingen: "",
   com_telefoon: "OK",
   com_internet: "OK",
@@ -20,8 +22,6 @@ const DEF_F = {
   inst_awos: "OK",
   inst_pc_lhb: "OK",
   inst_radar: "OK",
-  inst_werkmobiel: "OK",
-  inst_charger: "OK",
   wu_products: [],
   wu_anders: "",
   notam_verzonden: false,
@@ -32,6 +32,9 @@ const DEF_F = {
   byz_hydrofoor: "",
   byz_stroom: "",
   byz_swm: "",
+  byz_maaiwerkzaamheden: "",
+  ziekmeldingen: [],
+  aanvragen: [],
   byz_airlines: "",
   byz_operations: "",
   byz_atc: "",
@@ -39,17 +42,45 @@ const DEF_F = {
   byz_algemeen: "",
 };
 
+// Zet oudere entries (met los `meteoroloog`-veld) om naar de personen-array.
+function normalizeInitial(initial) {
+  if (!initial) return { ...DEF_F, datum: today() };
+  const merged = { ...DEF_F, ...initial };
+  if (!Array.isArray(merged.personen) || merged.personen.length === 0) {
+    merged.personen = [{ naam: initial.meteoroloog || "" }];
+  }
+  if (!Array.isArray(merged.ziekmeldingen)) merged.ziekmeldingen = [];
+  if (!Array.isArray(merged.aanvragen)) merged.aanvragen = [];
+  return merged;
+}
+
 export default function ForecasterForm({ onSave, gebruiker, initial }) {
-  const [f, setF] = useState(initial ? { ...DEF_F, ...initial } : { ...DEF_F, datum: today() });
+  const [f, setF] = useState(() => normalizeInitial(initial));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const upd = (k, v) => setF(p => ({ ...p, [k]: v }));
 
+  const addPersoon = () => {
+    if (f.personen.length >= 4) return;
+    setF(prev => ({ ...prev, personen: [...prev.personen, { ...DEF_PERSOON_F }] }));
+  };
+  const removePersoon = idx => {
+    if (f.personen.length <= 1) return;
+    setF(prev => ({ ...prev, personen: prev.personen.filter((_, i) => i !== idx) }));
+  };
+  const updPersoon = (idx, val) => {
+    setF(prev => {
+      const arr = [...prev.personen];
+      arr[idx] = { ...arr[idx], naam: val };
+      return { ...prev, personen: arr };
+    });
+  };
+
   const validate = () => {
     const e = {};
     if (!f.datum) e.datum = true;
-    if (!f.meteoroloog) e.meteoroloog = true;
     if (!f.shift) e.shift = true;
+    if (!f.personen[0]?.naam.trim()) e.persoon_naam_0 = true;
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -58,15 +89,16 @@ export default function ForecasterForm({ onSave, gebruiker, initial }) {
     if (!validate()) return;
     setSaving(true);
     try {
+      const meteoroloog = f.personen[0]?.naam || "";
       if (!f.id) {
-        const exists = await checkDuplicate(f.datum, f.shift, "forecaster", f.meteoroloog);
+        const exists = await checkDuplicate(f.datum, f.shift, "forecaster", meteoroloog);
         if (exists && !window.confirm("Er bestaat al een logboek voor deze datum/shift/meteoroloog. Toch doorgaan?")) {
           setSaving(false);
           return;
         }
       }
-      await onSave({ ...f, type: "forecaster", id: f.id || nowId(), ts: Date.now(), ingevuld_door: gebruiker });
-      setF({ ...DEF_F, datum: today() });
+      await onSave({ ...f, type: "forecaster", meteoroloog, id: f.id || nowId(), ts: Date.now(), ingevuld_door: gebruiker });
+      setF({ ...DEF_F, datum: today(), personen: [{ ...DEF_PERSOON_F }] });
       setErrors({});
     } finally {
       setSaving(false);
@@ -84,20 +116,33 @@ export default function ForecasterForm({ onSave, gebruiker, initial }) {
             <div className="field"><label>Datum {errors.datum && <span style={{ color: "var(--danger)" }}>*</span>}</label><input type="date" value={f.datum} onChange={e => upd("datum", e.target.value)} style={reqStyle("datum")} /></div>
             <div className="field"><label>Shift {errors.shift && <span style={{ color: "var(--danger)" }}>*</span>}</label><select value={f.shift} onChange={e => upd("shift", e.target.value)} style={reqStyle("shift")}><option value="">Selecteer…</option>{SHIFTS.map(s => <option key={s}>{s}</option>)}</select></div>
           </div>
-          <div className="field-grid single">
-            <div className="field"><label>Meteoroloog {errors.meteoroloog && <span style={{ color: "var(--danger)" }}>*</span>}</label><input value={f.meteoroloog} onChange={e => upd("meteoroloog", e.target.value)} style={reqStyle("meteoroloog")} placeholder="Volledige naam" /></div>
-          </div>
-          <div className="field-grid">
-            <div className="field"><label>Werktijd van (LT)</label><input type="time" value={f.werktijd_van} onChange={e => upd("werktijd_van", e.target.value)} /></div>
-            <div className="field"><label>Werktijd tot (LT)</label><input type="time" value={f.werktijd_tot} onChange={e => upd("werktijd_tot", e.target.value)} /></div>
-          </div>
-          {!f.werktijd_van && !f.werktijd_tot && (
-            <p style={{ fontSize: 11, color: "var(--warn)", marginTop: -4, marginBottom: 4 }}>Aanbevolen: vul uw exacte werktijden in (LT) voor de persoonsanalyse.</p>
-          )}
           {Object.keys(errors).length > 0 && <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 4 }}>Vul de verplichte velden in (*).</p>}
           <div className="field-grid single" style={{ marginTop: 8 }}>
             <Field label="Verwachtingen uitgebracht" field="verwachtingen" val={f.verwachtingen} onChange={upd} type="textarea" />
           </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>👥 Meteoroloog / meteorologen</span></div>
+        <div className="card-body">
+          {f.personen.map((p, idx) => (
+            <div key={idx} className="persoon-block">
+              <div className="persoon-block-head">
+                <span>{idx === 0 ? "Meteoroloog" : `Persoon ${idx + 1}`}</span>
+                {idx > 0 && <button type="button" className="btn btn-danger" onClick={() => removePersoon(idx)}>× Verwijder</button>}
+              </div>
+              <div className="field-grid single">
+                <div className="field">
+                  <label>Naam {idx === 0 && errors.persoon_naam_0 && <span style={{ color: "var(--danger)" }}>*</span>}</label>
+                  <input value={p.naam} onChange={e => updPersoon(idx, e.target.value)} style={idx === 0 ? reqStyle("persoon_naam_0") : {}} placeholder="Volledige naam" />
+                </div>
+              </div>
+            </div>
+          ))}
+          {f.personen.length < 4 && (
+            <button type="button" className="btn btn-secondary" onClick={addPersoon}>+ Voeg persoon toe</button>
+          )}
         </div>
       </div>
 
@@ -118,8 +163,6 @@ export default function ForecasterForm({ onSave, gebruiker, initial }) {
           <StatusRow label="AWOS" field="inst_awos" val={f.inst_awos} onChange={upd} />
           <StatusRow label="PC LHB" field="inst_pc_lhb" val={f.inst_pc_lhb} onChange={upd} />
           <StatusRow label="RADAR" field="inst_radar" val={f.inst_radar} onChange={upd} />
-          <StatusRow label="Werkmobiel" field="inst_werkmobiel" val={f.inst_werkmobiel} onChange={upd} />
-          <StatusRow label="Charger" field="inst_charger" val={f.inst_charger} onChange={upd} />
         </div>
       </div>
 
@@ -175,7 +218,20 @@ export default function ForecasterForm({ onSave, gebruiker, initial }) {
             <Field label="Hydrofoor" field="byz_hydrofoor" val={f.byz_hydrofoor} onChange={upd} />
             <Field label="Stroomonderbrekingen" field="byz_stroom" val={f.byz_stroom} onChange={upd} />
             <Field label="Levering SWM water" field="byz_swm" val={f.byz_swm} onChange={upd} />
+            <div className="field">
+              <label>Maaiwerkzaamheden</label>
+              <select value={f.byz_maaiwerkzaamheden} onChange={e => upd("byz_maaiwerkzaamheden", e.target.value)}>
+                {MAAIWERK_OPTS.map(o => <option key={o} value={o}>{o === "" ? "N.v.t." : o}</option>)}
+              </select>
+            </div>
           </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>🤒 Ziektemeldingen</span></div>
+        <div className="card-body">
+          <Ziekmeldingen value={f.ziekmeldingen} onChange={v => upd("ziekmeldingen", v)} />
         </div>
       </div>
 
@@ -188,6 +244,13 @@ export default function ForecasterForm({ onSave, gebruiker, initial }) {
             <Field label="ATC" field="byz_atc" val={f.byz_atc} onChange={upd} />
             <Field label="Toren" field="byz_toren" val={f.byz_toren} onChange={upd} />
           </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>📅 Aanvragen</span></div>
+        <div className="card-body">
+          <Aanvragen value={f.aanvragen} onChange={v => upd("aanvragen", v)} />
         </div>
       </div>
 
