@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { EXPORT_SECTIONS } from "../constants.js";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { EXPORT_TREE, ALL_EXPORT_IDS } from "../constants.js";
 import { today } from "../utils.js";
 import { getEntries, deleteEntry, updateEntry } from "../api.js";
 import EntryCard from "./EntryCard.jsx";
@@ -8,16 +8,26 @@ import ObserverForm from "./ObserverForm.jsx";
 import { exportDocx } from "../export/exportDocx.js";
 import { exportXlsx } from "../export/exportXlsx.js";
 
-export default function Overzicht({ canDelete, showToast }) {
+// Alle namen (meteoroloog + adjunct-meteorologen) van één entry, voor de
+// naam-filter en de weergave.
+function namenVan(e) {
+  const uit = [];
+  if (e.meteoroloog) uit.push(e.meteoroloog);
+  (e.personen || []).forEach(p => p.naam && uit.push(p.naam));
+  return uit;
+}
+
+export default function Overzicht({ canDelete, canEdit = true, showToast }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [typeFilter, setTypeFilter] = useState("alle");
+  const [naamFilter, setNaamFilter] = useState("");
   const [periodeMode, setPeriodeMode] = useState("maand");
   const [maand, setMaand] = useState(today().slice(0, 7));
   const [dagVan, setDagVan] = useState(today());
   const [dagTot, setDagTot] = useState(today());
-  const [sections, setSections] = useState(EXPORT_SECTIONS.map(s => s.id));
+  const [selectedIds, setSelectedIds] = useState(ALL_EXPORT_IDS);
   const [editing, setEditing] = useState(null);
 
   const filters = {};
@@ -37,9 +47,30 @@ export default function Overzicht({ canDelete, showToast }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const toggleSection = id => setSections(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
-  const allOn = sections.length === EXPORT_SECTIONS.length;
-  const toggleAll = () => setSections(allOn ? [] : EXPORT_SECTIONS.map(s => s.id));
+  // Naam-filter draait client-side op de al opgehaalde entries.
+  const visibleEntries = useMemo(() => {
+    const q = naamFilter.trim().toLowerCase();
+    if (!q) return entries;
+    return entries.filter(e => namenVan(e).some(n => n.toLowerCase().includes(q)));
+  }, [entries, naamFilter]);
+
+  // Export-selectie: per element (leaf). Een sectie is "aan" als al zijn
+  // elementen aan staan, "deels" als sommige aan staan.
+  const isElOn = id => selectedIds.includes(id);
+  const toggleEl = id => setSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+  const sectionState = sec => {
+    const on = sec.elements.filter(el => isElOn(el.id)).length;
+    if (on === 0) return "off";
+    if (on === sec.elements.length) return "on";
+    return "partial";
+  };
+  const toggleSection = sec => {
+    const ids = sec.elements.map(el => el.id);
+    const allOn = sectionState(sec) === "on";
+    setSelectedIds(prev => (allOn ? prev.filter(x => !ids.includes(x)) : [...new Set([...prev, ...ids])]));
+  };
+  const allOn = selectedIds.length === ALL_EXPORT_IDS.length;
+  const toggleAll = () => setSelectedIds(allOn ? [] : ALL_EXPORT_IDS);
 
   const handleDelete = async uuid => {
     if (!window.confirm("Wis dit logboek?")) return;
@@ -113,35 +144,59 @@ export default function Overzicht({ canDelete, showToast }) {
               <option value="observer">Observers</option>
             </select>
           </div>
+          <div className="filter-field"><label>Naam (meteoroloog / adjunct)</label>
+            <input value={naamFilter} onChange={e => setNaamFilter(e.target.value)} placeholder="Filter op naam…" />
+          </div>
         </div>
 
         <div style={{ marginTop: 4 }}>
-          <div className="cb-title" style={{ marginBottom: 6 }}>Secties in export
+          <div className="cb-title" style={{ marginBottom: 6 }}>Elementen in export
             <button onClick={toggleAll} style={{ marginLeft: 10, fontSize: 11, padding: "2px 8px", borderRadius: 4, border: "1px solid var(--paperMid)", background: "var(--paper)", cursor: "pointer", color: "var(--inkMid)" }}>
               {allOn ? "Alles uit" : "Alles aan"}
             </button>
           </div>
-          <div className="section-toggles">
-            {EXPORT_SECTIONS.map(s => (
-              <label key={s.id} className={`section-toggle${sections.includes(s.id) ? " on" : ""}`}>
-                <input type="checkbox" checked={sections.includes(s.id)} onChange={() => toggleSection(s.id)} />{s.label}
-              </label>
-            ))}
+          <div className="export-tree">
+            {EXPORT_TREE.map(sec => {
+              const st = sectionState(sec);
+              const single = sec.elements.length === 1 && sec.elements[0].id === sec.id;
+              return (
+                <div key={sec.id} className="export-tree-sec">
+                  <label className={`section-toggle${st !== "off" ? " on" : ""}`}>
+                    <input
+                      type="checkbox"
+                      checked={st === "on"}
+                      ref={el => el && (el.indeterminate = st === "partial")}
+                      onChange={() => toggleSection(sec)}
+                    />
+                    <strong>{sec.label}</strong>
+                  </label>
+                  {!single && (
+                    <div className="export-tree-elements">
+                      {sec.elements.map(el => (
+                        <label key={el.id} className={`section-toggle${isElOn(el.id) ? " on" : ""}`}>
+                          <input type="checkbox" checked={isElOn(el.id)} onChange={() => toggleEl(el.id)} />{el.label}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
         <div style={{ marginTop: 14, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <button className="btn btn-export" onClick={() => exportDocx(entries, sections, periodeNaam())}>⬇ Download Word (.docx)</button>
-          <button className="btn btn-export" onClick={() => exportXlsx(entries, periodeNaam())}>⬇ Download Excel (.xlsx)</button>
-          <span style={{ fontSize: 12, color: "var(--inkLo)" }}>{entries.length} inzending{entries.length !== 1 ? "en" : ""} geselecteerd</span>
+          <button className="btn btn-export" onClick={() => exportDocx(visibleEntries, selectedIds, periodeNaam())}>⬇ Download Word (.docx)</button>
+          <button className="btn btn-export" onClick={() => exportXlsx(visibleEntries, periodeNaam())}>⬇ Download Excel (.xlsx)</button>
+          <span style={{ fontSize: 12, color: "var(--inkLo)" }}>{visibleEntries.length} inzending{visibleEntries.length !== 1 ? "en" : ""} geselecteerd</span>
         </div>
       </div>
 
       {error && <div className="error-state">{error}</div>}
       {loading && <div className="loading-state">Logboeken laden…</div>}
-      {!loading && entries.length === 0 && !error
+      {!loading && visibleEntries.length === 0 && !error
         ? <div className="empty-state"><div style={{ fontSize: 32 }}>📭</div><p>Geen logboeken voor de geselecteerde filters.</p></div>
-        : entries.map(e => <EntryCard key={e.uuid || e.id} e={e} onDelete={handleDelete} onEdit={setEditing} canDelete={canDelete} />)
+        : visibleEntries.map(e => <EntryCard key={e.uuid || e.id} e={e} onDelete={handleDelete} onEdit={canEdit ? setEditing : undefined} canDelete={canDelete} canEdit={canEdit} />)
       }
       <div style={{ height: 16 }} />
     </div>

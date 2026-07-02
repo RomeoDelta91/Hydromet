@@ -93,17 +93,19 @@ function notamSection(e) {
   return [heading("NOTAMs verzonden", HeadingLevel.HEADING_3), table(rows)];
 }
 
-function bijzonderhedenSection(e) {
+// `ids` bevat de geselecteerde leaf-id's; alleen die elementen komen mee.
+function bijzonderhedenSection(e, ids) {
+  const has = id => ids.includes(id);
   const fields = [
-    ["Dienstauto", e.byz_dienstauto], ["Dienstbus", e.byz_dienstbus], ["Hydrofoor", e.byz_hydrofoor],
-    ["Stroomonderbrekingen", e.byz_stroom], ["Levering SWM water", e.byz_swm], ["Maaiwerkzaamheden", e.byz_maaiwerkzaamheden],
-    ["Airlines", e.byz_airlines], ["Operations", e.byz_operations], ["ATC", e.byz_atc], ["Toren", e.byz_toren],
+    ["byz_dienstauto", "Dienstauto"], ["byz_dienstbus", "Dienstbus"], ["byz_hydrofoor", "Hydrofoor"],
+    ["byz_stroom", "Stroomonderbrekingen"], ["byz_swm", "Levering SWM water"], ["byz_maaiwerkzaamheden", "Maaiwerkzaamheden"],
+    ["byz_airlines", "Airlines"], ["byz_operations", "Operations"], ["byz_atc", "ATC"], ["byz_toren", "Toren"],
   ];
-  const rows = fields.filter(([, v]) => v).map(([l, v]) => kv(l, v));
+  const rows = fields.filter(([k]) => has(k) && e[k]).map(([k, l]) => kv(l, e[k]));
   const blocks = [];
   if (rows.length) blocks.push(heading("Bijzonderheden", HeadingLevel.HEADING_3), table(rows));
 
-  const ziek = (e.ziekmeldingen || []).filter(z => z.tijd || z.naam || z.periode);
+  const ziek = has("ziekmeldingen") ? (e.ziekmeldingen || []).filter(z => z.tijd || z.naam || z.periode) : [];
   if (ziek.length) {
     blocks.push(heading("Ziektemeldingen", HeadingLevel.HEADING_3));
     blocks.push(table([
@@ -112,7 +114,7 @@ function bijzonderhedenSection(e) {
     ]));
   }
 
-  const aanvr = (e.aanvragen || []).filter(a => a.type || a.naam || a.periode);
+  const aanvr = has("aanvragen") ? (e.aanvragen || []).filter(a => a.type || a.naam || a.periode) : [];
   if (aanvr.length) {
     blocks.push(heading("Aanvragen", HeadingLevel.HEADING_3));
     blocks.push(table([
@@ -121,23 +123,26 @@ function bijzonderhedenSection(e) {
     ]));
   }
 
-  if (e.byz_algemeen) {
+  if (has("byz_algemeen") && e.byz_algemeen) {
     blocks.push(new Paragraph({ text: "Algemeen", heading: HeadingLevel.HEADING_4 }));
     blocks.push(new Paragraph({ text: e.byz_algemeen }));
   }
   return blocks;
 }
 
-function entrySections(e, sectionIds) {
+// `ids` = geselecteerde leaf-id's (per element). Labels worden per element
+// gefilterd zodat je bijv. binnen Instrumenten alleen RADAR kunt exporteren.
+function entrySections(e, ids) {
   const isF = e.type === "forecaster";
-  const commLabels = isF
+  const filterLabels = full => Object.fromEntries(Object.entries(full).filter(([k]) => ids.includes(k)));
+  const commLabels = filterLabels(isF
     ? { com_telefoon: "Telefoon", com_internet: "Internet", com_amhs: "AMHS", com_awos: "AWOS" }
-    : { com_telefoon: "Telefoon", com_internet: "Internet", com_amhs: "AMHS", com_awos: "AWOS", com_werkmobiel: "Werkmobiel", com_charger: "Charger" };
-  const instLabels = isF
+    : { com_telefoon: "Telefoon", com_internet: "Internet", com_amhs: "AMHS", com_awos: "AWOS", com_werkmobiel: "Werkmobiel", com_charger: "Charger" });
+  const instLabels = filterLabels(isF
     ? { inst_aws: "AWS", inst_awos: "AWOS", inst_pc_lhb: "PC LHB", inst_radar: "RADAR" }
-    : { inst_conventioneel: "Conventioneel", inst_aws: "AWS", inst_awos: "AWOS", inst_radar: "RADAR" };
+    : { inst_conventioneel: "Conventioneel", inst_aws: "AWS", inst_awos: "AWOS", inst_radar: "RADAR" });
 
-  const sec = id => sectionIds.includes(id);
+  const sec = id => ids.includes(id);
   const blocks = [
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
@@ -145,12 +150,12 @@ function entrySections(e, sectionIds) {
     }),
   ];
   if (sec("basis")) blocks.push(...basisgegevensSection(e));
-  if (sec("communicatie")) blocks.push(...communicatieSection(e, commLabels));
-  if (sec("instrumenten")) blocks.push(...instrumentenSection(e, instLabels));
+  if (Object.keys(commLabels).length) blocks.push(...communicatieSection(e, commLabels));
+  if (Object.keys(instLabels).length) blocks.push(...instrumentenSection(e, instLabels));
   if (sec("werkzaamheden")) blocks.push(...werkzaamhedenSection(e));
   if (sec("webupload")) blocks.push(...webUploadSection(e));
   if (sec("notams")) blocks.push(...notamSection(e));
-  if (sec("logistiek") || sec("operationeel") || sec("algemeen")) blocks.push(...bijzonderhedenSection(e));
+  blocks.push(...bijzonderhedenSection(e, ids));
   return blocks;
 }
 

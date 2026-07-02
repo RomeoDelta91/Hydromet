@@ -4,7 +4,8 @@ import { getUsers, createUser, updateUser, deleteUser } from "../api.js";
 const ROLES = [
   { id: "forecaster", label: "Forecaster" },
   { id: "observer", label: "Observer" },
-  { id: "chef", label: "Chef (Overzicht + verwijderen)" },
+  { id: "administratie", label: "Administratie (Overzicht lezen + downloaden)" },
+  { id: "chef", label: "Chef (Overzicht + bewerken/verwijderen)" },
   { id: "admin", label: "Admin (Beheer)" },
 ];
 

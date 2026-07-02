@@ -1,4 +1,4 @@
-export default function EntryCard({ e, onDelete, onEdit, canDelete }) {
+export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = true }) {
   const isF = e.type === "forecaster";
   const storingen = [
     e.com_telefoon !== "OK" && `Telefoon: ${e.com_telefoon}`,
@@ -32,7 +32,7 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete }) {
           {storingen.length > 0 && <span className="badge badge-warn">⚠ Storing</span>}
         </div>
         <div className="entry-actions">
-          {onEdit && <button className="btn btn-secondary" onClick={() => onEdit(e)}>Bewerk</button>}
+          {onEdit && canEdit && <button className="btn btn-secondary" onClick={() => onEdit(e)}>Bewerk</button>}
           {canDelete && <button className="btn btn-danger" onClick={() => onDelete(e.uuid || e.id)}>Wis</button>}
         </div>
       </div>

@@ -137,6 +137,14 @@ function nmc_chef_required(WP_REST_Request $req) {
     return $u && in_array($u['role'], ['chef', 'admin'], true);
 }
 
+// Lezen/exporteren van het overzicht: chef, admin én de administratie-rol.
+// De administratie-rol mag uitsluitend lezen en downloaden — niet bewerken of
+// verwijderen (die routes blijven op nmc_chef_required staan).
+function nmc_overzicht_required(WP_REST_Request $req) {
+    $u = nmc_current_user($req);
+    return $u && in_array($u['role'], ['chef', 'admin', 'administratie'], true);
+}
+
 function nmc_admin_required(WP_REST_Request $req) {
     $u = nmc_current_user($req);
     return $u && $u['role'] === 'admin';
@@ -174,7 +182,7 @@ add_action('rest_api_init', function() {
     register_rest_route($ns, '/logboek', [
         'methods'             => 'GET',
         'callback'            => 'nmc_get_logboek',
-        'permission_callback' => 'nmc_chef_required',
+        'permission_callback' => 'nmc_overzicht_required',
     ]);
 
     register_rest_route($ns, '/logboek', [
@@ -204,7 +212,7 @@ add_action('rest_api_init', function() {
     register_rest_route($ns, '/personen', [
         'methods'             => 'GET',
         'callback'            => 'nmc_get_personen',
-        'permission_callback' => 'nmc_chef_required',
+        'permission_callback' => 'nmc_overzicht_required',
     ]);
 
     // Gebruikersbeheer — alleen voor 'admin'-rol, vervangt wp-admin gebruikersbeheer.
@@ -288,7 +296,7 @@ function nmc_create_user(WP_REST_Request $req) {
     $username = sanitize_user($body['username'] ?? '');
     $naam     = sanitize_text_field($body['naam'] ?? '');
     $password = $body['password'] ?? '';
-    $role     = in_array($body['role'] ?? '', ['forecaster', 'observer', 'chef', 'admin'], true) ? $body['role'] : 'forecaster';
+    $role     = in_array($body['role'] ?? '', ['forecaster', 'observer', 'administratie', 'chef', 'admin'], true) ? $body['role'] : 'forecaster';
 
     if (!$username || !$naam || !$password) {
         return new WP_Error('missing_fields', 'Gebruikersnaam, naam en wachtwoord zijn verplicht', ['status' => 400]);
@@ -318,7 +326,7 @@ function nmc_update_user(WP_REST_Request $req) {
 
     $data = [];
     if (!empty($body['naam']))     $data['naam'] = sanitize_text_field($body['naam']);
-    if (!empty($body['role']) && in_array($body['role'], ['forecaster', 'observer', 'chef', 'admin'], true)) {
+    if (!empty($body['role']) && in_array($body['role'], ['forecaster', 'observer', 'administratie', 'chef', 'admin'], true)) {
         $data['role'] = $body['role'];
     }
     if (!empty($body['password'])) $data['password_hash'] = password_hash($body['password'], PASSWORD_BCRYPT);

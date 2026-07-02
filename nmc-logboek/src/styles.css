@@ -80,6 +80,11 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 .section-toggle{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink);background:var(--paper);border:1px solid var(--paperMid);border-radius:6px;padding:5px 12px;cursor:pointer;user-select:none;}
 .section-toggle.on{background:rgba(0,200,150,.12);border-color:var(--green);color:var(--ink);}
 .section-toggle input{width:14px;height:14px;accent-color:var(--green);cursor:pointer;}
+.export-tree{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
+.export-tree-sec{border:1px solid var(--paperMid);border-radius:8px;padding:8px 10px;}
+.export-tree-sec>.section-toggle{border:none;background:transparent;padding:2px 0;font-size:13px;}
+.export-tree-elements{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-left:18px;}
+.export-tree-elements .section-toggle{font-size:11px;padding:4px 10px;}
 .divider{border:none;border-top:1px solid var(--paperMid);margin:10px 0;}
 
 /* entry cards */

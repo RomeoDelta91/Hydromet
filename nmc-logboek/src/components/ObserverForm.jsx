@@ -320,13 +320,6 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
       </div>
 
       <div className="card">
-        <div className="card-header"><span>🤒 Ziektemeldingen</span></div>
-        <div className="card-body">
-          <Ziekmeldingen value={f.ziekmeldingen} onChange={v => upd("ziekmeldingen", v)} />
-        </div>
-      </div>
-
-      <div className="card">
         <div className="card-header"><span>✈️ Bijzonderheden – Operationeel</span></div>
         <div className="card-body">
           <div className="field-grid">
@@ -335,6 +328,13 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
             <Field label="ATC" field="byz_atc" val={f.byz_atc} onChange={upd} />
             <Field label="Toren" field="byz_toren" val={f.byz_toren} onChange={upd} />
           </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>🤒 Ziektemeldingen</span></div>
+        <div className="card-body">
+          <Ziekmeldingen value={f.ziekmeldingen} onChange={v => upd("ziekmeldingen", v)} />
         </div>
       </div>
 
