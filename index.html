@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WinGridds 11 — Gridded Weather Data Display</title>
+<meta name="description" content="A modern Windows 11-friendly clone of WINGRIDDS/PCGRIDDS32 — command-driven display of GFS gridded model fields.">
+<style>
+  :root{
+    --bg0:#171a21; --bg1:#1e2230; --mica1:#202536; --mica2:#171c2a;
+    --panel:rgba(38,44,62,.72); --panel-solid:#262c3e;
+    --stroke:rgba(255,255,255,.09); --stroke-strong:rgba(255,255,255,.16);
+    --ink:#eef1f7; --ink2:#aab3c5; --ink3:#7c8598;
+    --accent:#5eb2ff; --accent2:#7fd4a8; --warn:#f2c14e; --bad:#ff7a76;
+    --radius:10px; --radius-sm:6px;
+    --mono:"Cascadia Mono","Cascadia Code",Consolas,"JetBrains Mono",monospace;
+    --sans:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;
+  }
+  :root[data-theme="light"]{
+    --bg0:#e8ecf3; --bg1:#dde3ee; --mica1:#e9edf5; --mica2:#d8deeb;
+    --panel:rgba(255,255,255,.72); --panel-solid:#f4f6fb;
+    --stroke:rgba(20,30,50,.10); --stroke-strong:rgba(20,30,50,.20);
+    --ink:#1b2333; --ink2:#4c5870; --ink3:#7d879b;
+    --accent:#0f6cbd; --accent2:#0f7b4f; --warn:#9a6b00; --bad:#c42b1c;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:var(--sans); color:var(--ink); overflow:hidden;
+    background:
+      radial-gradient(1200px 700px at 15% -10%, var(--mica1), transparent 60%),
+      radial-gradient(1000px 800px at 110% 110%, var(--mica2), transparent 55%),
+      linear-gradient(160deg, var(--bg1), var(--bg0));
+  }
+  #app{display:flex; flex-direction:column; height:100vh; gap:8px; padding:8px;}
+
+  /* ---- Title bar ---- */
+  #titlebar{
+    display:flex; align-items:center; gap:10px; padding:6px 12px;
+    background:var(--panel); border:1px solid var(--stroke); border-radius:var(--radius);
+    backdrop-filter:blur(24px) saturate(1.4); -webkit-backdrop-filter:blur(24px) saturate(1.4);
+    flex:none;
+  }
+  #titlebar .logo{width:24px; height:24px; flex:none;}
+  #titlebar h1{font-size:14px; font-weight:600; letter-spacing:.2px;}
+  #titlebar h1 span{color:var(--ink3); font-weight:400; font-size:12.5px; margin-left:8px;}
+  #titlebar .spacer{flex:1;}
+  .badge{
+    display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:var(--ink2);
+    border:1px solid var(--stroke-strong); border-radius:999px; padding:3px 10px; white-space:nowrap;
+  }
+  .badge .dot{width:8px; height:8px; border-radius:50%; background:var(--ink3);}
+  .badge.live .dot{background:var(--accent2); box-shadow:0 0 6px var(--accent2);}
+  .badge.demo .dot{background:var(--warn); box-shadow:0 0 6px var(--warn);}
+  .badge.busy .dot{background:var(--accent); animation:pulse 1s infinite;}
+  @keyframes pulse{50%{opacity:.35;}}
+  button, select{
+    font-family:var(--sans); font-size:12.5px; color:var(--ink);
+    background:rgba(255,255,255,.05); border:1px solid var(--stroke-strong);
+    border-radius:var(--radius-sm); padding:5px 11px; cursor:pointer;
+  }
+  :root[data-theme="light"] button, :root[data-theme="light"] select{background:rgba(255,255,255,.6);}
+  button:hover{border-color:var(--accent); color:var(--accent);}
+  button:active{transform:translateY(1px);}
+  button.primary{background:var(--accent); color:#08131f; border-color:transparent; font-weight:600;}
+  button.primary:hover{filter:brightness(1.1); color:#08131f;}
+  button.toggled{background:var(--accent); color:#08131f; border-color:transparent;}
+
+  /* ---- Main split ---- */
+  #main{display:flex; gap:8px; flex:1; min-height:0;}
+  #sidebar{
+    width:232px; flex:none; overflow-y:auto; padding:12px;
+    background:var(--panel); border:1px solid var(--stroke); border-radius:var(--radius);
+    backdrop-filter:blur(24px) saturate(1.4); -webkit-backdrop-filter:blur(24px) saturate(1.4);
+    scrollbar-width:thin;
+  }
+  #sidebar h2{
+    font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px;
+    color:var(--ink3); margin:16px 0 7px;
+  }
+  #sidebar h2:first-child{margin-top:0;}
+  #sidebar select{width:100%;}
+  .btngrid{display:grid; grid-template-columns:1fr 1fr; gap:5px;}
+  .btngrid.c4{grid-template-columns:repeat(4,1fr);}
+  .btngrid button{padding:5px 4px; font-size:11.5px; text-align:center;}
+  .preset-list{display:flex; flex-direction:column; gap:5px;}
+  .preset-list button{text-align:left; font-size:12px; padding:6px 10px;}
+  .hint{font-size:11px; color:var(--ink3); line-height:1.45; margin-top:6px;}
+
+  /* ---- Map area ---- */
+  #maparea{
+    flex:1; min-width:0; position:relative; display:flex; align-items:center; justify-content:center;
+    background:var(--panel); border:1px solid var(--stroke); border-radius:var(--radius);
+    backdrop-filter:blur(24px) saturate(1.4); -webkit-backdrop-filter:blur(24px) saturate(1.4);
+    overflow:hidden;
+  }
+  #chart{display:block; border-radius:6px; cursor:crosshair; max-width:100%; max-height:100%;}
+  #loading{
+    position:absolute; inset:0; display:none; align-items:center; justify-content:center; flex-direction:column; gap:12px;
+    background:rgba(10,13,20,.45); backdrop-filter:blur(3px); z-index:5; border-radius:var(--radius);
+    font-size:13px; color:var(--ink);
+  }
+  :root[data-theme="light"] #loading{background:rgba(240,244,250,.55);}
+  #loading .ring{
+    width:34px; height:34px; border-radius:50%; border:3px solid var(--stroke-strong);
+    border-top-color:var(--accent); animation:spin .9s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* ---- Bottom bars ---- */
+  #cmdbar,#timebar{
+    display:flex; align-items:center; gap:8px; padding:7px 10px; flex:none;
+    background:var(--panel); border:1px solid var(--stroke); border-radius:var(--radius);
+    backdrop-filter:blur(24px) saturate(1.4); -webkit-backdrop-filter:blur(24px) saturate(1.4);
+  }
+  #cmdprompt{font-family:var(--mono); font-size:13px; color:var(--accent2); flex:none; user-select:none;}
+  #cmd{
+    flex:1; font-family:var(--mono); font-size:13px; color:var(--ink);
+    background:rgba(0,0,0,.25); border:1px solid var(--stroke-strong); border-radius:var(--radius-sm);
+    padding:7px 10px; outline:none; text-transform:uppercase;
+  }
+  :root[data-theme="light"] #cmd{background:rgba(255,255,255,.75);}
+  #cmd:focus{border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);}
+  #cmderr{font-size:11.5px; color:var(--bad); white-space:nowrap; max-width:340px; overflow:hidden; text-overflow:ellipsis;}
+
+  #timebar .fkey{font-family:var(--mono); font-size:12px; min-width:74px; text-align:center;}
+  #fhr-slider{flex:1; accent-color:var(--accent); min-width:80px;}
+  #validtime{font-family:var(--mono); font-size:12.5px; color:var(--ink2); min-width:230px; text-align:right; white-space:nowrap;}
+  #readout{
+    font-family:var(--mono); font-size:11.5px; color:var(--ink3); min-width:210px; white-space:nowrap;
+  }
+
+  /* ---- Help modal ---- */
+  #help{
+    position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
+    background:rgba(5,8,14,.55); backdrop-filter:blur(4px);
+  }
+  #help .sheet{
+    width:min(860px, 92vw); max-height:86vh; overflow-y:auto; padding:26px 30px;
+    background:var(--panel-solid); border:1px solid var(--stroke-strong); border-radius:14px;
+    box-shadow:0 24px 70px rgba(0,0,0,.5);
+  }
+  #help h3{font-size:18px; margin-bottom:4px;}
+  #help .sub{color:var(--ink3); font-size:12.5px; margin-bottom:18px;}
+  #help h4{font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin:18px 0 8px;}
+  #help table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  #help td{padding:4px 10px 4px 0; vertical-align:top; border-bottom:1px solid var(--stroke); color:var(--ink2);}
+  #help td:first-child{font-family:var(--mono); color:var(--ink); white-space:nowrap; width:220px;}
+  #help code{font-family:var(--mono); background:rgba(128,160,255,.12); padding:1px 5px; border-radius:4px;}
+  #help .close{float:right;}
+  #help p{font-size:12.5px; color:var(--ink2); line-height:1.55; margin:6px 0;}
+  kbd{
+    font-family:var(--mono); font-size:11px; border:1px solid var(--stroke-strong);
+    border-bottom-width:2px; border-radius:4px; padding:0 5px; background:rgba(255,255,255,.06);
+  }
+  @media (max-width:760px){
+    #sidebar{display:none;}
+    #validtime{min-width:0;} #readout{display:none;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="titlebar">
+    <svg class="logo" viewBox="0 0 24 24" fill="none">
+      <rect x="1" y="1" width="10" height="10" rx="2" fill="#5eb2ff"/>
+      <rect x="13" y="1" width="10" height="10" rx="2" fill="#7fd4a8"/>
+      <rect x="1" y="13" width="10" height="10" rx="2" fill="#f2c14e"/>
+      <rect x="13" y="13" width="10" height="10" rx="2" fill="#ff7a76"/>
+      <path d="M3 6 Q6 3.5 9 6 M15 6 Q18 8.5 21 6 M3 18 Q6 15.5 9 18 M15 18 Q18 20.5 21 18" stroke="#10131c" stroke-width="1.4" fill="none"/>
+    </svg>
+    <h1>WinGridds&nbsp;11 <span>Gridded Weather Data Display — an open tribute to WINGRIDDS / PCGRIDDS32</span></h1>
+    <div class="spacer"></div>
+    <div class="badge" id="databadge"><span class="dot"></span><span id="databadge-text">STARTING…</span></div>
+    <button id="btn-export" title="Save the current chart as a PNG image">Export PNG</button>
+    <button id="btn-theme" title="Toggle light/dark theme">Theme</button>
+    <button id="btn-help" title="Command reference (F1)">Help&nbsp;·&nbsp;F1</button>
+  </div>
+
+  <div id="main">
+    <div id="sidebar">
+      <h2>Domain</h2>
+      <select id="domain"></select>
+
+      <h2>Products (macros)</h2>
+      <div class="preset-list" id="presets"></div>
+
+      <h2>Level (hPa)</h2>
+      <div class="btngrid c4" id="levels"></div>
+
+      <h2>Parameters</h2>
+      <div class="btngrid" id="params"></div>
+      <div class="hint">Click a parameter to plot it at the selected level, or type commands below — overlay fields with <b>&amp;</b>. Press <b>F1</b> for the full command reference.</div>
+
+      <h2>About</h2>
+      <div class="hint">
+        Unofficial modern re-creation of Jeff Krob's freeware <b>WINGRIDDS</b> (winweather.org),
+        rebuilt for Windows&nbsp;11 as a zero-install web app. Live GFS model data via the free
+        Open-Meteo API; falls back to an offline demo dataset. Not affiliated with the original author.
+      </div>
+    </div>
+
+    <div id="maparea">
+      <canvas id="chart"></canvas>
+      <div id="loading"><div class="ring"></div><div id="loading-text">Ingesting GFS data…</div></div>
+    </div>
+  </div>
+
+  <div id="cmdbar">
+    <span id="cmdprompt">CMD&gt;</span>
+    <input id="cmd" spellcheck="false" autocomplete="off"
+           placeholder="HGHT 500 CI60 & VORT 500 FILL & WIND 500 BARB   —   press Enter to plot, F1 for help">
+    <span id="cmderr"></span>
+    <button class="primary" id="btn-run">Plot</button>
+  </div>
+
+  <div id="timebar">
+    <button id="btn-first" title="First frame (Home)">|&#9664;</button>
+    <button id="btn-prev" title="Step back 6 h (&#8592;)">&#9664;</button>
+    <span class="fkey" id="fhr-label">F000</span>
+    <button id="btn-next" title="Step forward 6 h (&#8594;)">&#9654;</button>
+    <button id="btn-last" title="Last frame (End)">&#9654;|</button>
+    <button id="btn-loop" title="Animate (Space)">LOOP</button>
+    <input type="range" id="fhr-slider" min="0" max="28" value="0" step="1">
+    <span id="readout">&nbsp;</span>
+    <span id="validtime">&nbsp;</span>
+  </div>
+</div>
+
+<div id="help">
+  <div class="sheet">
+    <button class="close" onclick="document.getElementById('help').style.display='none'">Close ✕</button>
+    <h3>WinGridds 11 — Command Reference</h3>
+    <div class="sub">A modern re-creation of the WINGRIDDS / PCGRIDDS32 command language. Commands are case-insensitive; overlay multiple fields with <code>&amp;</code> (or <code>+</code>).</div>
+
+    <h4>Field parameters</h4>
+    <table>
+      <tr><td>HGHT <i>lvl</i></td><td>Geopotential height (m). Default contour intervals: 30 m at/below 700, 60 m at 500, 120 m at 300/250/200.</td></tr>
+      <tr><td>TEMP <i>lvl</i></td><td>Temperature (°C). Sub-zero contours are dashed. Add FILL for a color-shaded field.</td></tr>
+      <tr><td>DWPT <i>lvl</i></td><td>Dewpoint (°C), computed from temperature and relative humidity.</td></tr>
+      <tr><td>RELH <i>lvl</i></td><td>Relative humidity (%). Classic look: <code>RELH 700 FILL</code>.</td></tr>
+      <tr><td>WIND <i>lvl</i></td><td>Wind barbs (kt), drawn on a thinned grid.</td></tr>
+      <tr><td>SPED <i>lvl</i></td><td>Isotachs / wind speed (kt). <code>SPED 300 FILL</code> shows the jet.</td></tr>
+      <tr><td>VORT <i>lvl</i></td><td>Absolute vorticity (10&#8315;&#8309; s&#8315;&#185;). <code>RVRT</code> gives relative vorticity.</td></tr>
+      <tr><td>DVRG <i>lvl</i></td><td>Divergence (10&#8315;&#8309; s&#8315;&#185;), diverging color scale when filled.</td></tr>
+      <tr><td>TADV <i>lvl</i></td><td>Temperature advection (°C / 3 h). Warm advection positive.</td></tr>
+      <tr><td>VADV <i>lvl</i></td><td>Absolute vorticity advection (10&#8315;&#8313; s&#8315;&#178;).</td></tr>
+      <tr><td>THCK</td><td>1000–500 hPa thickness (m). Classic: <code>PMSL CI4 HILO &amp; THCK CI60 DASH</code>. The 5400 m contour is emphasized.</td></tr>
+      <tr><td>PMSL</td><td>Mean sea-level pressure (hPa).</td></tr>
+      <tr><td>T2M / D2M</td><td>2-m temperature / dewpoint (°C).</td></tr>
+      <tr><td>CAPE</td><td>Surface-based CAPE (J/kg).</td></tr>
+      <tr><td>PRCP</td><td>Precipitation rate at the valid time (mm/h).</td></tr>
+    </table>
+
+    <h4>Levels</h4>
+    <p>Any of <code>1000 925 850 700 500 400 300 250 200</code> hPa; surface parameters (PMSL, CAPE, PRCP, T2M, D2M, THCK) need no level. A bare number sets the level for the parameter before it, e.g. <code>HGHT 500</code>.</p>
+
+    <h4>Style modifiers (per overlay)</h4>
+    <table>
+      <tr><td>CI<i>n</i> (e.g. CI60, CI4)</td><td>Contour interval in the field's display units.</td></tr>
+      <tr><td>FILL</td><td>Color-shaded (filled) field instead of line contours; a legend is drawn.</td></tr>
+      <tr><td>LINE</td><td>Force line contours (default).</td></tr>
+      <tr><td>BARB</td><td>Wind barbs (only meaningful with WIND).</td></tr>
+      <tr><td>DASH</td><td>Dashed contours.</td></tr>
+      <tr><td>HILO</td><td>Mark local maxima/minima with H / L and their values.</td></tr>
+      <tr><td>CLR1…CLR6</td><td>Contour color slot: 1 white/ink, 2 yellow, 3 cyan, 4 magenta, 5 green, 6 orange.</td></tr>
+      <tr><td>SMTH</td><td>Extra smoothing pass on the field.</td></tr>
+    </table>
+
+    <h4>Global commands</h4>
+    <table>
+      <tr><td>F<i>hh</i> (e.g. F048)</td><td>Jump to a forecast hour (6-h steps, F000–F168).</td></tr>
+      <tr><td>LOOP</td><td>Toggle animation through all forecast hours.</td></tr>
+      <tr><td>MAP</td><td>Draw the base map only.</td></tr>
+      <tr><td>HELP</td><td>Open this reference.</td></tr>
+    </table>
+
+    <h4>Keyboard</h4>
+    <p><kbd>Enter</kbd> plot &nbsp; <kbd>&#8593;</kbd>/<kbd>&#8595;</kbd> command history &nbsp; <kbd>&#8592;</kbd>/<kbd>&#8594;</kbd> step time &nbsp; <kbd>Space</kbd> loop &nbsp; <kbd>Home</kbd>/<kbd>End</kbd> first/last frame &nbsp; <kbd>F1</kbd> help.</p>
+
+    <h4>Example products</h4>
+    <table>
+      <tr><td>HGHT 500 CI60 &amp; VORT 500 FILL &amp; WIND 500 BARB</td><td>Classic 500 hPa height / absolute vorticity.</td></tr>
+      <tr><td>TEMP 850 FILL &amp; HGHT 850 CI30 &amp; WIND 850 BARB</td><td>850 hPa temperature and height.</td></tr>
+      <tr><td>PMSL CI4 HILO &amp; THCK CI60 DASH CLR2</td><td>Surface pressure with 1000–500 thickness.</td></tr>
+      <tr><td>SPED 300 FILL &amp; HGHT 300 CI120 &amp; WIND 300 BARB</td><td>300 hPa jet-stream analysis.</td></tr>
+      <tr><td>TADV 850 FILL &amp; HGHT 850 CI30</td><td>850 hPa temperature advection.</td></tr>
+    </table>
+
+    <h4>Data</h4>
+    <p>Live mode ingests NCEP <b>GFS</b> model output through the free
+      <a href="https://open-meteo.com" target="_blank" rel="noopener" style="color:var(--accent)">Open-Meteo</a> API
+      (no key required) on a grid covering the chosen domain, out to +168 h in 6-h steps. Forecast-hour labels are
+      referenced to today's 00 UTC cycle as presented by the API. If the network is unavailable the app switches to a
+      physically plausible synthetic <b>demo dataset</b> so every command still works.</p>
+    <p>WINGRIDDS is freeware by Jeff Krob (winweather.org). This project is an independent, unofficial tribute that
+      re-implements the concept and command style for modern systems; it shares no code with the original.</p>
+  </div>
+</div>
+
+<script src="mapdata.js"></script>
+<script>
+"use strict";
+/* =====================================================================
+   WinGridds 11 — a modern clone of WINGRIDDS / PCGRIDDS32
+   Single-file app: data ingest (Open-Meteo GFS) -> diagnostics -> canvas
+   ===================================================================== */
+
+/* ---------------- Domains & grid ---------------- */
+const DOMAINS = {
+  CONUS:      {name:"CONUS (United States)", lat0:22, lat1:52, lon0:-127, lon1:-64},
+  NAMER:      {name:"North America",         lat0:15, lat1:65, lon0:-140, lon1:-50},
+  EURO:       {name:"Europe",                lat0:33, lat1:66, lon0:-15,  lon1:35},
+  ATL:        {name:"North Atlantic",        lat0:15, lat1:60, lon0:-85,  lon1:-5},
+  EPAC:       {name:"East Pacific / West US",lat0:15, lat1:60, lon0:-160, lon1:-100},
+  SASIA:      {name:"South Asia / India",    lat0:0,  lat1:38, lon0:58,   lon1:100},
+  EASIA:      {name:"East Asia",             lat0:15, lat1:55, lon0:95,   lon1:150},
+  AUS:        {name:"Australia / NZ",        lat0:-48,lat1:-8, lon0:110,  lon1:180},
+  SAMER:      {name:"South America",         lat0:-55,lat1:12, lon0:-90,  lon1:-30},
+  TROPATL:    {name:"Tropical Atlantic",     lat0:5,  lat1:40, lon0:-100, lon1:-20},
+};
+const LEVELS = [1000,925,850,700,500,400,300,250,200];
+const NT = 29;               // 29 six-hourly steps: F000..F168
+const FHR_STEP = 6;
+
+const state = {
+  domainKey: localStorage.getItem("wg11.domain") || "CONUS",
+  grid: null,                // {lats,lons,nx,ny}
+  cache: {},                 // key `${domainKey}|${level}` -> {times:[unix], fields:{name:Float32Array(nt*ny*nx)}}
+  times: null,
+  demo: false,
+  overlays: [],              // parsed plot specs currently displayed
+  lastCommand: "",
+  t: 0,
+  looping: false,
+  loopTimer: null,
+  history: JSON.parse(localStorage.getItem("wg11.history") || "[]"),
+  histPos: -1,
+  selLevel: 500,
+  busy: false,
+};
+
+function buildGrid(dom){
+  const targetCols = 34;
+  const rawStep = (dom.lon1 - dom.lon0) / targetCols;
+  const step = Math.max(0.5, Math.round(rawStep * 2) / 2);  // multiple of 0.5°
+  const lons = [], lats = [];
+  for (let x = dom.lon0; x <= dom.lon1 + 1e-6; x += step) lons.push(+x.toFixed(2));
+  for (let y = dom.lat0; y <= dom.lat1 + 1e-6; y += step) lats.push(+y.toFixed(2));
+  return {lats, lons, nx:lons.length, ny:lats.length, step};
+}
+
+/* ---------------- Data layer (Open-Meteo GFS) ---------------- */
+const PL_VARS = L => [
+  `geopotential_height_${L}hPa`, `temperature_${L}hPa`, `relative_humidity_${L}hPa`,
+  `wind_speed_${L}hPa`, `wind_direction_${L}hPa`,
+];
+const SFC_VARS = [
+  "pressure_msl","temperature_2m","dew_point_2m","cape","precipitation",
+  "wind_speed_10m","wind_direction_10m",
+];
+// canonical short names used internally, in same order as the API vars above
+const PL_SHORT  = ["z","t","rh","spd","dir"];
+const SFC_SHORT = ["pmsl","t2m","d2m","cape","prcp","spd","dir"];
+
+function cacheKey(level){ return state.domainKey + "|" + level; }
+
+async function fetchJSON(url, timeoutMs=25000){
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, {signal: ctl.signal});
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return await r.json();
+  } finally { clearTimeout(timer); }
+}
+
+async function fetchLevel(level){
+  const key = cacheKey(level);
+  if (state.cache[key]) return state.cache[key];
+  const g = state.grid;
+  const isSfc = level === "SFC";
+  const apiVars = isSfc ? SFC_VARS : PL_VARS(level);
+  const shorts  = isSfc ? SFC_SHORT : PL_SHORT;
+  const npts = g.nx * g.ny;
+  const fields = {};
+  for (const s of shorts) fields[s] = new Float32Array(NT * npts).fill(NaN);
+  let times = null;
+
+  if (!state.demo){
+    setLoading(true, `Ingesting GFS ${isSfc ? "surface" : level + " hPa"} data…`);
+    try {
+      // all grid points, chunked
+      const pts = [];
+      for (let j = 0; j < g.ny; j++)
+        for (let i = 0; i < g.nx; i++)
+          pts.push([g.lats[j], g.lons[i], j*g.nx + i]);
+      const CHUNK = 90;
+      const jobs = [];
+      for (let c = 0; c < pts.length; c += CHUNK) jobs.push(pts.slice(c, c + CHUNK));
+      let done = 0;
+      // limited parallelism to be polite to the free API
+      const workers = jobs.map(chunk => async () => {
+        const lat = chunk.map(p => p[0]).join(",");
+        const lon = chunk.map(p => p[1]).join(",");
+        const url = "https://api.open-meteo.com/v1/gfs?latitude=" + lat + "&longitude=" + lon +
+          "&hourly=" + apiVars.join(",") +
+          "&forecast_days=8&temporal_resolution=hourly_6&wind_speed_unit=ms&timeformat=unixtime&timezone=UTC";
+        let data = await fetchJSON(url);
+        if (!Array.isArray(data)) data = [data];
+        data.forEach((loc, k) => {
+          const idx = chunk[k][2];
+          if (!times) times = loc.hourly.time.slice(0, NT);
+          apiVars.forEach((v, vi) => {
+            const arr = loc.hourly[v];
+            if (!arr) return;
+            for (let t = 0; t < NT && t < arr.length; t++){
+              const val = arr[t];
+              if (val !== null && val !== undefined) fields[shorts[vi]][t*npts + idx] = val;
+            }
+          });
+        });
+        done++;
+        setLoading(true, `Ingesting GFS ${isSfc ? "surface" : level + " hPa"} data… ${Math.round(done/jobs.length*100)}%`);
+      });
+      const POOL = 4;
+      let cursor = 0;
+      await Promise.all(Array.from({length: POOL}, async () => {
+        while (cursor < workers.length){ const w = workers[cursor++]; await w(); }
+      }));
+      setDataBadge("live");
+    } catch (e) {
+      console.warn("Live data unavailable, switching to demo dataset:", e);
+      state.demo = true;
+      state.cache = {};   // drop any partial live data
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (state.demo){
+    times = demoTimes();
+    demoFill(level, fields, g);
+    setDataBadge("demo");
+  }
+
+  const entry = {times, fields};
+  state.cache[key] = entry;
+  if (!state.times) state.times = times;
+  return entry;
+}
+
+/* ---------------- Demo dataset (offline fallback) ----------------
+   A steadily progressing baroclinic wave train: heights are synthesized
+   analytically and winds derived geostrophically from the same heights,
+   so contours, barbs, vorticity and advection stay mutually consistent. */
+function demoTimes(){
+  const t0 = new Date(); t0.setUTCHours(0,0,0,0);
+  return Array.from({length: NT}, (_, i) => t0.getTime()/1000 + i*FHR_STEP*3600);
+}
+const DEMO_BASE = {1000:110, 925:770, 850:1460, 700:3010, 500:5570, 400:7180, 300:9160, 250:10360, 200:11780};
+const DEMO_GRAD = {1000:0.9, 925:1.1, 850:1.4, 700:2.2, 500:3.4, 400:4.2, 300:5.2, 250:5.6, 200:5.6};
+const DEMO_T0   = {1000:22, 925:18, 850:12, 700:2, 500:-16, 400:-30, 300:-44, 250:-52, 200:-56};
+
+function demoZ(level, lat, lon, th){        // geopotential height, m
+  const g = DEMO_GRAD[level] || 3.4;
+  const base = DEMO_BASE[level] || 5570;
+  const phase = lon - 14*th/24;             // wave train moving east 14°/day
+  const env = Math.exp(-Math.pow((Math.abs(lat)-45)/16, 2));
+  const wave = (28*g + 25) * env *
+    (Math.sin(3*phase*Math.PI/180) + 0.55*Math.sin(5.1*phase*Math.PI/180 + 1.3));
+  // jet-like meridional gradient: ~4.3*g m per degree, concentrated near 38°
+  const merid = -4.3 * g * 20 * (Math.tanh((Math.abs(lat)-38)/14) + 1);
+  return base + 4.3*g*13 + merid + wave;
+}
+function demoZref(level){                   // domain-mean reference height
+  const g = DEMO_GRAD[level] || 3.4;
+  return (DEMO_BASE[level] || 5570) + 4.3*g*13 - 4.3*g*20;
+}
+function demoT(level, lat, lon, th){
+  const phase = lon - 14*th/24 + 12;        // thermal wave lags the height wave
+  const env = Math.exp(-Math.pow((Math.abs(lat)-45)/20, 2));
+  return (DEMO_T0[level] ?? 0) + 18*Math.cos(lat*Math.PI/90)
+       - 6*env*Math.sin(3*phase*Math.PI/180);
+}
+function demoRH(level, lat, lon, th){
+  const phase = lon - 14*th/24 - 8;
+  const env = Math.exp(-Math.pow((Math.abs(lat)-42)/22, 2));
+  return Math.max(5, Math.min(100, 52 + 38*env*Math.sin(3*phase*Math.PI/180 + 0.8)));
+}
+function demoFill(level, fields, g){
+  const npts = g.nx * g.ny;
+  const isSfc = level === "SFC";
+  for (let t = 0; t < NT; t++){
+    const th = t * FHR_STEP;
+    // synthesize heights first (also drives surface pressure)
+    const zl = isSfc ? 1000 : level;
+    const z = new Float32Array(npts);
+    for (let j = 0; j < g.ny; j++)
+      for (let i = 0; i < g.nx; i++)
+        z[j*g.nx + i] = demoZ(zl, g.lats[j], g.lons[i], th);
+    // geostrophic wind from z
+    const {u, v} = geostrophic(z, g);
+    for (let j = 0; j < g.ny; j++){
+      for (let i = 0; i < g.nx; i++){
+        const idx = j*g.nx + i, lat = g.lats[j], lon = g.lons[i];
+        const off = t*npts + idx;
+        const uu = u[idx], vv = v[idx];
+        const spd = Math.hypot(uu, vv);
+        const dir = (Math.atan2(-uu, -vv) * 180/Math.PI + 360) % 360;
+        if (isSfc){
+          fields.pmsl[off] = 1013 + (z[idx] - demoZref(1000)) / 8.0;   // ~8 m per hPa near sea level
+          fields.t2m[off]  = demoT(1000, lat, lon, th) + 4;
+          const rh = demoRH(1000, lat, lon, th);
+          fields.d2m[off]  = dewpoint(fields.t2m[off], rh);
+          fields.cape[off] = Math.max(0, (fields.t2m[off] - 18) * 90 * (rh/100) * Math.exp(-Math.pow((Math.abs(lat)-32)/14,2)));
+          fields.prcp[off] = Math.max(0, (demoRH(700, lat, lon, th) - 72) * 0.28);
+          fields.spd[off]  = spd * 0.65;  // surface friction
+          fields.dir[off]  = dir;
+        } else {
+          fields.z[off]   = z[idx];
+          fields.t[off]   = demoT(level, lat, lon, th);
+          fields.rh[off]  = demoRH(level, lat, lon, th);
+          fields.spd[off] = spd;
+          fields.dir[off] = dir;
+        }
+      }
+    }
+  }
+}
+
+/* ---------------- Math / diagnostics ---------------- */
+const RE = 6.371e6, OMEGA = 7.292e-5, GRAV = 9.80665;
+
+function dxdy(g, j){
+  const dlat = (g.lats[1] - g.lats[0]) * Math.PI/180;
+  const dlon = (g.lons[1] - g.lons[0]) * Math.PI/180;
+  const coslat = Math.max(0.15, Math.cos(g.lats[j] * Math.PI/180));
+  return {dx: RE * coslat * dlon, dy: RE * dlat};
+}
+function ddx(f, g){
+  const out = new Float32Array(f.length);
+  for (let j = 0; j < g.ny; j++){
+    const {dx} = dxdy(g, j);
+    for (let i = 0; i < g.nx; i++){
+      const i0 = Math.max(0, i-1), i1 = Math.min(g.nx-1, i+1);
+      out[j*g.nx+i] = (f[j*g.nx+i1] - f[j*g.nx+i0]) / ((i1-i0) * dx);
+    }
+  }
+  return out;
+}
+function ddy(f, g){
+  const out = new Float32Array(f.length);
+  const {dy} = dxdy(g, 0);
+  for (let j = 0; j < g.ny; j++){
+    const j0 = Math.max(0, j-1), j1 = Math.min(g.ny-1, j+1);
+    for (let i = 0; i < g.nx; i++)
+      out[j*g.nx+i] = (f[j1*g.nx+i] - f[j0*g.nx+i]) / ((j1-j0) * dy);
+  }
+  return out;
+}
+function geostrophic(z, g){
+  const zx = ddx(z, g), zy = ddy(z, g);
+  const u = new Float32Array(z.length), v = new Float32Array(z.length);
+  for (let j = 0; j < g.ny; j++){
+    const lat = g.lats[j];
+    const f = 2 * OMEGA * Math.sin(Math.max(10, Math.abs(lat)) * Math.PI/180) * Math.sign(lat || 1);
+    for (let i = 0; i < g.nx; i++){
+      u[j*g.nx+i] = -GRAV/f * zy[j*g.nx+i];
+      v[j*g.nx+i] =  GRAV/f * zx[j*g.nx+i];
+    }
+  }
+  return {u, v};
+}
+function windUV(entry, t, g){
+  const npts = g.nx * g.ny;
+  const u = new Float32Array(npts), v = new Float32Array(npts);
+  for (let k = 0; k < npts; k++){
+    const spd = entry.fields.spd[t*npts+k], dir = entry.fields.dir[t*npts+k] * Math.PI/180;
+    u[k] = -spd * Math.sin(dir);
+    v[k] = -spd * Math.cos(dir);
+  }
+  return {u, v};
+}
+function smooth9(f, g, passes=1){
+  let a = f;
+  for (let p = 0; p < passes; p++){
+    const out = new Float32Array(a.length);
+    for (let j = 0; j < g.ny; j++)
+      for (let i = 0; i < g.nx; i++){
+        let s = 0, n = 0;
+        for (let dj = -1; dj <= 1; dj++)
+          for (let di = -1; di <= 1; di++){
+            const jj = j+dj, ii = i+di;
+            if (jj < 0 || jj >= g.ny || ii < 0 || ii >= g.nx) continue;
+            const w = (dj === 0 && di === 0) ? 4 : (dj === 0 || di === 0) ? 2 : 1;
+            s += a[jj*g.nx+ii] * w; n += w;
+          }
+        out[j*g.nx+i] = s / n;
+      }
+    a = out;
+  }
+  return a;
+}
+function slice(entry, name, t, g){
+  const npts = g.nx * g.ny;
+  return entry.fields[name].subarray(t*npts, (t+1)*npts);
+}
+function dewpoint(T, RH){
+  const a = 17.625, b = 243.04;
+  const gamma = Math.log(Math.max(1, RH)/100) + a*T/(b+T);
+  return b*gamma/(a-gamma);
+}
+
+/* ---------------- Parameter registry ---------------- */
+/* compute(level) is async: it ensures data is fetched, then returns
+   {field(t) -> Float32Array}  (values already in display units)      */
+const PARAMS = {
+  HGHT: {name:"HEIGHT", units:"m", needsLevel:true, defCI:l => l >= 700 ? 30 : l === 500 ? 60 : 120,
+    async make(l){ const e = await fetchLevel(l); return t => slice(e,"z",t,state.grid); }},
+  TEMP: {name:"TEMPERATURE", units:"°C", needsLevel:true, defCI:() => 2, dashNeg:true, scale:"temp",
+    async make(l){ const e = await fetchLevel(l); return t => slice(e,"t",t,state.grid); }},
+  DWPT: {name:"DEWPOINT", units:"°C", needsLevel:true, defCI:() => 2, dashNeg:true, scale:"temp",
+    async make(l){ const e = await fetchLevel(l);
+      return t => { const T = slice(e,"t",t,state.grid), RH = slice(e,"rh",t,state.grid);
+        const out = new Float32Array(T.length);
+        for (let k = 0; k < T.length; k++) out[k] = dewpoint(T[k], RH[k]);
+        return out; }; }},
+  RELH: {name:"REL HUMIDITY", units:"%", needsLevel:true, defCI:() => 10, scale:"rh",
+    async make(l){ const e = await fetchLevel(l); return t => slice(e,"rh",t,state.grid); }},
+  SPED: {name:"ISOTACHS", units:"kt", needsLevel:true, defCI:l => l <= 400 ? 20 : 10, scale:"wind",
+    async make(l){ const e = await fetchLevel(l);
+      return t => { const s = slice(e,"spd",t,state.grid);
+        const out = new Float32Array(s.length);
+        for (let k = 0; k < s.length; k++) out[k] = s[k] * 1.94384;
+        return out; }; }},
+  WIND: {name:"WIND", units:"kt", needsLevel:true, isWind:true,
+    async make(l){ const e = await fetchLevel(l); return t => windUV(e, t, state.grid); }},
+  VORT: {name:"ABS VORTICITY", units:"10⁻⁵ s⁻¹", needsLevel:true, defCI:() => 2, scale:"vort", smooth:1,
+    async make(l){ const e = await fetchLevel(l);
+      return t => { const {u, v} = windUV(e, t, state.grid);
+        const vx = ddx(v, state.grid), uy = ddy(u, state.grid);
+        const out = new Float32Array(u.length);
+        for (let j = 0; j < state.grid.ny; j++){
+          const f = 2*OMEGA*Math.sin(state.grid.lats[j]*Math.PI/180);
+          for (let i = 0; i < state.grid.nx; i++){
+            const k = j*state.grid.nx+i;
+            out[k] = (vx[k] - uy[k] + f) * 1e5;
+          }
+        }
+        return out; }; }},
+  RVRT: {name:"REL VORTICITY", units:"10⁻⁵ s⁻¹", needsLevel:true, defCI:() => 2, scale:"div", dashNeg:true, smooth:1,
+    async make(l){ const e = await fetchLevel(l);
+      return t => { const {u, v} = windUV(e, t, state.grid);
+        const vx = ddx(v, state.grid), uy = ddy(u, state.grid);
+        const out = new Float32Array(u.length);
+        for (let k = 0; k < u.length; k++) out[k] = (vx[k] - uy[k]) * 1e5;
+        return out; }; }},
+  DVRG: {name:"DIVERGENCE", units:"10⁻⁵ s⁻¹", needsLevel:true, defCI:() => 1, scale:"div", dashNeg:true, smooth:1,
+    async make(l){ const e = await fetchLevel(l);
+      return t => { const {u, v} = windUV(e, t, state.grid);
+        const ux = ddx(u, state.grid), vy = ddy(v, state.grid);
+        const out = new Float32Array(u.length);
+        for (let k = 0; k < u.length; k++) out[k] = (ux[k] + vy[k]) * 1e5;
+        return out; }; }},
+  TADV: {name:"TEMP ADVECTION", units:"°C/3h", needsLevel:true, defCI:() => 0.5, scale:"div", dashNeg:true, smooth:1,
+    async make(l){ const e = await fetchLevel(l);
+      return t => { const {u, v} = windUV(e, t, state.grid);
+        const T = slice(e,"t",t,state.grid);
+        const tx = ddx(T, state.grid), ty = ddy(T, state.grid);
+        const out = new Float32Array(u.length);
+        for (let k = 0; k < u.length; k++) out[k] = -(u[k]*tx[k] + v[k]*ty[k]) * 3600 * 3;
+        return out; }; }},
+  VADV: {name:"VORT ADVECTION", units:"10⁻⁹ s⁻²", needsLevel:true, defCI:() => 1, scale:"div", dashNeg:true, smooth:2,
+    async make(l){ const e = await fetchLevel(l);
+      return t => { const {u, v} = windUV(e, t, state.grid);
+        const vx = ddx(v, state.grid), uy = ddy(u, state.grid);
+        const zeta = new Float32Array(u.length);
+        for (let j = 0; j < state.grid.ny; j++){
+          const f = 2*OMEGA*Math.sin(state.grid.lats[j]*Math.PI/180);
+          for (let i = 0; i < state.grid.nx; i++){
+            const k = j*state.grid.nx+i;
+            zeta[k] = vx[k] - uy[k] + f;
+          }
+        }
+        const zs = smooth9(zeta, state.grid, 1);
+        const zx = ddx(zs, state.grid), zy = ddy(zs, state.grid);
+        const out = new Float32Array(u.length);
+        for (let k = 0; k < u.length; k++) out[k] = -(u[k]*zx[k] + v[k]*zy[k]) * 1e9;
+        return out; }; }},
+  THCK: {name:"1000-500 THICKNESS", units:"m", needsLevel:false, defCI:() => 60, scale:"temp",
+    async make(){ const e5 = await fetchLevel(500), e10 = await fetchLevel(1000);
+      return t => { const a = slice(e5,"z",t,state.grid), b = slice(e10,"z",t,state.grid);
+        const out = new Float32Array(a.length);
+        for (let k = 0; k < a.length; k++) out[k] = a[k] - b[k];
+        return out; }; }},
+  PMSL: {name:"MSL PRESSURE", units:"hPa", needsLevel:false, defCI:() => 4,
+    async make(){ const e = await fetchLevel("SFC"); return t => slice(e,"pmsl",t,state.grid); }},
+  T2M: {name:"2M TEMPERATURE", units:"°C", needsLevel:false, defCI:() => 2, dashNeg:true, scale:"temp",
+    async make(){ const e = await fetchLevel("SFC"); return t => slice(e,"t2m",t,state.grid); }},
+  D2M: {name:"2M DEWPOINT", units:"°C", needsLevel:false, defCI:() => 2, dashNeg:true, scale:"temp",
+    async make(){ const e = await fetchLevel("SFC"); return t => slice(e,"d2m",t,state.grid); }},
+  CAPE: {name:"CAPE", units:"J/kg", needsLevel:false, defCI:() => 500, scale:"cape",
+    async make(){ const e = await fetchLevel("SFC"); return t => slice(e,"cape",t,state.grid); }},
+  PRCP: {name:"PRECIP RATE", units:"mm/h", needsLevel:false, defCI:() => 2, scale:"precip",
+    async make(){ const e = await fetchLevel("SFC"); return t => slice(e,"prcp",t,state.grid); }},
+};
+const ALIASES = {HGT:"HGHT", TMPC:"TEMP", TMP:"TEMP", WVRT:"VORT", AVOR:"VORT", ADVT:"TADV",
+                 RH:"RELH", MSLP:"PMSL", PRES:"PMSL", ISOT:"SPED", SPD:"SPED", THKN:"THCK", DEWP:"DWPT"};
+
+/* ---------------- Color scales ---------------- */
+function lerpColor(c1, c2, f){
+  return [0,1,2].map(k => Math.round(c1[k] + (c2[k]-c1[k])*f));
+}
+function makeRamp(stops){          // stops: [[value, [r,g,b]], ...] sorted
+  return v => {
+    if (v <= stops[0][0]) return stops[0][1];
+    for (let s = 1; s < stops.length; s++)
+      if (v <= stops[s][0]){
+        const f = (v - stops[s-1][0]) / (stops[s][0] - stops[s-1][0]);
+        return lerpColor(stops[s-1][1], stops[s][1], f);
+      }
+    return stops[stops.length-1][1];
+  };
+}
+const SCALES = {
+  // sequential & diverging ramps; `min` marks the first shaded step for one-sided scales
+  vort:  {min:12, ramp:makeRamp([[12,[252,232,131]],[18,[247,150,54]],[24,[219,61,49]],[32,[146,22,49]],[44,[84,10,35]]])},
+  wind:  {min:50, ramp:makeRamp([[50,[168,212,247]],[80,[86,152,224]],[110,[60,84,190]],[150,[120,52,180]],[190,[190,60,190]]])},
+  rh:    {min:50, ramp:makeRamp([[50,[214,232,197]],[70,[130,196,131]],[90,[38,132,80]],[100,[10,84,52]]])},
+  cape:  {min:250,ramp:makeRamp([[250,[252,232,131]],[1000,[247,150,54]],[2000,[219,61,49]],[3500,[146,22,49]],[5000,[110,10,80]]])},
+  precip:{min:0.5,ramp:makeRamp([[0.5,[190,222,170]],[5,[70,160,90]],[15,[40,110,170]],[30,[100,70,180]],[60,[180,60,170]]])},
+  temp:  {diverge:0, ramp:makeRamp([[-40,[120,60,180]],[-20,[70,110,210]],[-5,[140,190,235]],[0,[196,201,208]],[5,[240,200,140]],[20,[230,120,70]],[40,[160,30,40]]])},
+  div:   {diverge:0, zeroFade:true, ramp:makeRamp([[-8,[40,90,200]],[-1,[160,196,240]],[0,[196,201,208]],[1,[245,190,150]],[8,[200,50,40]]])},
+};
+// contour color slots (CLR1..CLR6) per theme
+function clrSlots(){
+  return isLight()
+    ? ["#1b2333","#8f6400","#00687a","#a12c8f","#0f7b4f","#b34700"]
+    : ["#f2f4f8","#ffd95e","#5fd6e8","#ff8ad8","#8fe6a8","#ffab5e"];
+}
+function isLight(){ return document.documentElement.dataset.theme === "light"; }
+
+/* ---------------- Command parser ---------------- */
+function parseCommand(str){
+  const global = {fhr:null, loop:false, mapOnly:false, help:false};
+  const overlays = [];
+  const groups = str.toUpperCase().split(/[&+]/).map(s => s.trim()).filter(Boolean);
+  for (const gstr of groups){
+    const toks = gstr.split(/\s+/);
+    let spec = null;
+    for (let tok of toks){
+      let m;
+      if (tok === "HELP"){ global.help = true; continue; }
+      if (tok === "LOOP"){ global.loop = true; continue; }
+      if (tok === "MAP"){ global.mapOnly = true; continue; }
+      if ((m = tok.match(/^F(\d{1,3})$/))){ global.fhr = +m[1]; continue; }
+      const code = PARAMS[tok] ? tok : ALIASES[tok];
+      if (code){
+        if (spec) overlays.push(spec);
+        spec = {code, level:null, ci:null, mode:null, dash:false, hilo:false, clr:null, smooth:0};
+        continue;
+      }
+      if (!spec) throw new Error(`Unknown command: ${tok}`);
+      if ((m = tok.match(/^(\d{3,4})$/)) && LEVELS.includes(+m[1])){ spec.level = +m[1]; continue; }
+      if ((m = tok.match(/^CI(\d+(?:\.\d+)?)$/))){ spec.ci = +m[1]; continue; }
+      if (tok === "FILL"){ spec.mode = "fill"; continue; }
+      if (tok === "LINE"){ spec.mode = "line"; continue; }
+      if (tok === "BARB"){ spec.mode = "barb"; continue; }
+      if (tok === "DASH"){ spec.dash = true; continue; }
+      if (tok === "HILO"){ spec.hilo = true; continue; }
+      if (tok === "SMTH"){ spec.smooth++; continue; }
+      if ((m = tok.match(/^CLR(\d)$/))){ spec.clr = Math.min(6, Math.max(1, +m[1])) - 1; continue; }
+      throw new Error(`Unknown token: ${tok}`);
+    }
+    if (spec) overlays.push(spec);
+  }
+  for (const s of overlays){
+    const p = PARAMS[s.code];
+    if (p.needsLevel && s.level == null) s.level = state.selLevel;
+    if (!p.needsLevel) s.level = null;
+    if (p.isWind && !s.mode) s.mode = "barb";
+  }
+  return {global, overlays};
+}
+
+/* ---------------- Bilinear upsample (for smooth contours/fill) ---------------- */
+function upsample(f, g, factor){
+  const NX = (g.nx-1)*factor + 1, NY = (g.ny-1)*factor + 1;
+  const out = new Float32Array(NX*NY);
+  for (let J = 0; J < NY; J++){
+    const y = J/factor, j0 = Math.min(g.ny-2, Math.floor(y)), fy = y - j0;
+    for (let I = 0; I < NX; I++){
+      const x = I/factor, i0 = Math.min(g.nx-2, Math.floor(x)), fx = x - i0;
+      const a = f[j0*g.nx+i0], b = f[j0*g.nx+i0+1], c = f[(j0+1)*g.nx+i0], d = f[(j0+1)*g.nx+i0+1];
+      out[J*NX+I] = a*(1-fx)*(1-fy) + b*fx*(1-fy) + c*(1-fx)*fy + d*fx*fy;
+    }
+  }
+  return {data:out, nx:NX, ny:NY};
+}
+
+/* ---------------- Marching squares contour tracer ---------------- */
+function contourLines(up, level){
+  // returns array of polylines in upsampled-grid coordinates [x,y]
+  const {data, nx, ny} = up;
+  const segs = [];
+  const interp = (v0, v1) => (level - v0) / (v1 - v0);
+  for (let j = 0; j < ny-1; j++){
+    for (let i = 0; i < nx-1; i++){
+      const v0 = data[j*nx+i], v1 = data[j*nx+i+1], v2 = data[(j+1)*nx+i+1], v3 = data[(j+1)*nx+i];
+      if (isNaN(v0) || isNaN(v1) || isNaN(v2) || isNaN(v3)) continue;
+      let idx = 0;
+      if (v0 > level) idx |= 1;
+      if (v1 > level) idx |= 2;
+      if (v2 > level) idx |= 4;
+      if (v3 > level) idx |= 8;
+      if (idx === 0 || idx === 15) continue;
+      // edge points: top(0), right(1), bottom(2), left(3)
+      const pt = e => {
+        switch(e){
+          case 0: return [i + interp(v0, v1), j];
+          case 1: return [i+1, j + interp(v1, v2)];
+          case 2: return [i + interp(v3, v2), j+1];
+          case 3: return [i, j + interp(v0, v3)];
+        }
+      };
+      const table = {
+        1:[[3,0]], 2:[[0,1]], 3:[[3,1]], 4:[[1,2]], 6:[[0,2]], 7:[[3,2]],
+        8:[[2,3]], 9:[[2,0]], 11:[[2,1]], 12:[[1,3]], 13:[[1,0]], 14:[[0,3]],
+        5:null, 10:null,
+      };
+      let edges = table[idx];
+      if (edges === null){ // saddle: resolve by cell average
+        const avg = (v0+v1+v2+v3)/4;
+        if (idx === 5)  edges = avg > level ? [[3,0],[1,2]] : [[0,1],[2,3]];
+        else            edges = avg > level ? [[0,1],[2,3]] : [[3,0],[1,2]];
+      }
+      for (const [e1, e2] of edges) segs.push([pt(e1), pt(e2)]);
+    }
+  }
+  // chain segments into polylines
+  const keyOf = p => (Math.round(p[0]*64)) + "," + (Math.round(p[1]*64));
+  const startMap = new Map();
+  for (const s of segs){
+    const k = keyOf(s[0]);
+    if (!startMap.has(k)) startMap.set(k, []);
+    startMap.get(k).push(s);
+  }
+  const used = new Set();
+  const lines = [];
+  for (const s of segs){
+    if (used.has(s)) continue;
+    used.add(s);
+    const line = [s[0], s[1]];
+    // extend forward
+    for(;;){
+      const cands = startMap.get(keyOf(line[line.length-1]));
+      let next = null;
+      if (cands) for (const c of cands) if (!used.has(c)){ next = c; break; }
+      if (!next) break;
+      used.add(next);
+      line.push(next[1]);
+      if (line.length > 4000) break;
+    }
+    lines.push(line);
+  }
+  return lines;
+}
+
+/* ---------------- Renderer ---------------- */
+const canvas = document.getElementById("chart");
+const ctx = canvas.getContext("2d");
+let VIEW = {w:800, h:500, dpr:1};
+
+function themeColors(){
+  const light = isLight();
+  return {
+    bg:        light ? "#f7f9fd" : "#10141d",
+    coast:     light ? "#5b6880" : "#8b96ad",
+    border:    light ? "#8a94a8" : "#5a6478",
+    stateLn:   light ? "#aab2c2" : "#3c4558",
+    grat:      light ? "rgba(30,45,80,.10)" : "rgba(160,180,220,.10)",
+    gratLabel: light ? "#7d879b" : "#66708a",
+    title:     light ? "#1b2333" : "#f2f4f8",
+    sub:       light ? "#4c5870" : "#aab3c5",
+    hi:        light ? "#0f4c9a" : "#6fb1ff",
+    lo:        light ? "#c42b1c" : "#ff7a76",
+    barb:      light ? "#33415e" : "#c6d0e2",
+  };
+}
+
+function sizeCanvas(){
+  const dom = DOMAINS[state.domainKey];
+  const area = document.getElementById("maparea");
+  const availW = area.clientWidth - 16, availH = area.clientHeight - 16;
+  const midlat = (dom.lat0 + dom.lat1)/2 * Math.PI/180;
+  const aspect = ((dom.lat1 - dom.lat0) / ((dom.lon1 - dom.lon0) * Math.cos(midlat)));
+  let w = availW, h = w * aspect;
+  if (h > availH){ h = availH; w = h / aspect; }
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  VIEW = {w, h, dpr};
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  canvas.style.width = w + "px";
+  canvas.style.height = h + "px";
+}
+function project(lat, lon){
+  const dom = DOMAINS[state.domainKey];
+  return [ (lon - dom.lon0) / (dom.lon1 - dom.lon0) * VIEW.w,
+           (dom.lat1 - lat) / (dom.lat1 - dom.lat0) * VIEW.h ];
+}
+function unproject(x, y){
+  const dom = DOMAINS[state.domainKey];
+  return [ dom.lat1 - y/VIEW.h * (dom.lat1 - dom.lat0),
+           dom.lon0 + x/VIEW.w * (dom.lon1 - dom.lon0) ];
+}
+function gridToPx(gx, gy, factor){
+  const g = state.grid;
+  const lon = g.lons[0] + gx/factor * g.step;
+  const lat = g.lats[0] + gy/factor * g.step;
+  return project(lat, lon);
+}
+
+function drawPolylines(lines, color, width, dash){
+  const dom = DOMAINS[state.domainKey];
+  ctx.strokeStyle = color; ctx.lineWidth = width;
+  ctx.setLineDash(dash || []);
+  ctx.beginPath();
+  for (const line of lines){
+    let pen = false;
+    for (const [lon, lat] of line){
+      if (lon < dom.lon0 - 12 || lon > dom.lon1 + 12 || lat < dom.lat0 - 12 || lat > dom.lat1 + 12){ pen = false; continue; }
+      const [x, y] = project(lat, lon);
+      if (!pen){ ctx.moveTo(x, y); pen = true; }
+      else ctx.lineTo(x, y);
+    }
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawBaseMap(tc){
+  ctx.fillStyle = tc.bg;
+  ctx.fillRect(0, 0, VIEW.w, VIEW.h);
+  const dom = DOMAINS[state.domainKey];
+  // graticule
+  ctx.strokeStyle = tc.grat; ctx.lineWidth = 1;
+  ctx.fillStyle = tc.gratLabel; ctx.font = "10px " + getComputedStyle(document.body).getPropertyValue("--mono");
+  ctx.beginPath();
+  for (let lon = Math.ceil(dom.lon0/10)*10; lon <= dom.lon1; lon += 10){
+    const [x] = project(dom.lat0, lon);
+    ctx.moveTo(x, 0); ctx.lineTo(x, VIEW.h);
+  }
+  for (let lat = Math.ceil(dom.lat0/10)*10; lat <= dom.lat1; lat += 10){
+    const [, y] = project(lat, dom.lon0);
+    ctx.moveTo(0, y); ctx.lineTo(VIEW.w, y);
+  }
+  ctx.stroke();
+  for (let lon = Math.ceil(dom.lon0/10)*10; lon <= dom.lon1; lon += 10){
+    const [x] = project(dom.lat0, lon);
+    ctx.fillText((lon < 0 ? -lon + "W" : lon + "E"), x + 3, VIEW.h - 5);
+  }
+  for (let lat = Math.ceil(dom.lat0/10)*10; lat <= dom.lat1; lat += 10){
+    const [, y] = project(lat, dom.lon0);
+    ctx.fillText((lat < 0 ? -lat + "S" : lat + "N"), 4, y - 3);
+  }
+  drawPolylines(MAP_STATES, tc.stateLn, 0.7);
+  drawPolylines(MAP_BORDERS, tc.border, 0.8);
+  drawPolylines(MAP_COAST, tc.coast, 1.1);
+}
+
+function drawFill(up, factor, scale, ci, alpha=0.82){
+  // render the (already upsampled) field to an offscreen canvas, one pixel
+  // per upsampled node, then scale it under the map lines
+  const off = document.createElement("canvas");
+  off.width = up.nx; off.height = up.ny;
+  const octx = off.getContext("2d");
+  const img = octx.createImageData(up.nx, up.ny);
+  const oneSided = scale.min !== undefined;
+  for (let k = 0; k < up.data.length; k++){
+    const v = up.data[k];
+    let a = 0, rgb = [0,0,0];
+    if (!isNaN(v)){
+      if (oneSided){
+        if (v >= scale.min){ rgb = scale.ramp(v); a = 235; }
+      } else if (scale.zeroFade){
+        // diverging anomaly field: near-zero stays transparent
+        const f = (Math.abs(v) - 0.35*ci) / (1.65*ci);
+        if (f > 0){ rgb = scale.ramp(v); a = Math.round(235 * Math.min(1, f)); }
+      } else {
+        rgb = scale.ramp(v); a = 235;
+      }
+    }
+    img.data[k*4] = rgb[0]; img.data[k*4+1] = rgb[1]; img.data[k*4+2] = rgb[2]; img.data[k*4+3] = a;
+  }
+  octx.putImageData(img, 0, 0);
+  // map the upsampled grid extent onto the canvas
+  const [x0, y0] = gridToPx(0, up.ny-1, factor);           // top-left = max lat
+  const [x1, y1] = gridToPx(up.nx-1, 0, factor);           // bottom-right = min lat
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  // note: grid row 0 is the SOUTH row; the offscreen image row 0 is also south,
+  // so flip vertically when drawing
+  ctx.translate(x0, y1);
+  ctx.scale(1, -1);
+  ctx.drawImage(off, 0, 0, up.nx, up.ny, 0, -0, x1-x0, y1-y0);
+  ctx.restore();
+}
+
+function niceLevels(min, max, ci){
+  const lv = [];
+  let v = Math.ceil(min/ci)*ci;
+  for (; v <= max; v += ci) lv.push(+v.toFixed(6));
+  return lv;
+}
+
+function drawContourSet(up, factor, ci, color, opts){
+  let mn = Infinity, mx = -Infinity;
+  for (const v of up.data){ if (isNaN(v)) continue; if (v < mn) mn = v; if (v > mx) mx = v; }
+  if (!isFinite(mn) || mx - mn < 1e-9) return;
+  const levels = niceLevels(mn, mx, ci);
+  if (levels.length > 80) return;             // interval too small for this field
+  ctx.font = "600 10.5px " + getComputedStyle(document.body).getPropertyValue("--mono");
+  const labelSpots = [];
+  for (const lev of levels){
+    const dashed = opts.dash || (opts.dashNeg && lev < 0);
+    const emphas = opts.emph !== undefined && Math.abs(lev - opts.emph) < ci/2;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = emphas ? 2.4 : 1.4;
+    ctx.setLineDash(dashed ? [7,5] : []);
+    const lines = contourLines(up, lev);
+    for (const line of lines){
+      ctx.beginPath();
+      let prev = null;
+      for (const [gx, gy] of line){
+        const [x, y] = gridToPx(gx, gy, factor);
+        if (!prev) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        prev = [x, y];
+      }
+      ctx.stroke();
+      // label placement: one label per ~220 px of line length
+      let acc = 0, lastPt = null;
+      for (const [gx, gy] of line){
+        const p = gridToPx(gx, gy, factor);
+        if (lastPt) acc += Math.hypot(p[0]-lastPt[0], p[1]-lastPt[1]);
+        lastPt = p;
+        if (acc > 220){
+          acc = 0;
+          if (p[0] > 26 && p[0] < VIEW.w-26 && p[1] > 40 && p[1] < VIEW.h-16 &&
+              !labelSpots.some(q => Math.hypot(q[0]-p[0], q[1]-p[1]) < 46)){
+            labelSpots.push(p);
+            const txt = String(Math.round(lev*10)/10);
+            const wpx = ctx.measureText(txt).width;
+            ctx.setLineDash([]);
+            ctx.fillStyle = themeColors().bg;
+            ctx.fillRect(p[0]-wpx/2-3, p[1]-7, wpx+6, 13);
+            ctx.fillStyle = color;
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(txt, p[0], p[1]);
+            ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+          }
+        }
+      }
+    }
+  }
+  ctx.setLineDash([]);
+}
+
+function drawBarbs(uv, tc){
+  const g = state.grid;
+  const [x0] = project(g.lats[0], g.lons[0]);
+  const [x1] = project(g.lats[0], g.lons[1]);
+  const cellPx = Math.abs(x1 - x0);
+  const stride = Math.max(1, Math.round(48 / cellPx));
+  ctx.strokeStyle = tc.barb; ctx.fillStyle = tc.barb; ctx.lineWidth = 1.1;
+  for (let j = 0; j < g.ny; j += stride){
+    for (let i = 0; i < g.nx; i += stride){
+      const k = j*g.nx+i;
+      const u = uv.u[k], v = uv.v[k];
+      if (isNaN(u) || isNaN(v)) continue;
+      const [x, y] = project(g.lats[j], g.lons[i]);
+      drawBarb(x, y, u, v);
+    }
+  }
+}
+function drawBarb(x, y, u, v){
+  let kt = Math.hypot(u, v) * 1.94384;
+  if (kt < 2.5){ ctx.beginPath(); ctx.arc(x, y, 1.6, 0, 7); ctx.stroke(); return; }
+  const L = 22;
+  // unit vector pointing UPWIND (direction the staff extends from the point)
+  const mag = Math.hypot(u, v);
+  const ux = -u/mag, uy = v/mag;      // canvas y grows downward
+  const px = -uy, py = ux;            // perpendicular (left of staff)
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + ux*L, y + uy*L);
+  ctx.stroke();
+  kt = Math.round(kt/5)*5;
+  let pos = L;
+  const step = 4.2;
+  const flag = 9, full = 8.5, half = 4.5;
+  while (kt >= 50){
+    ctx.beginPath();
+    ctx.moveTo(x + ux*pos, y + uy*pos);
+    ctx.lineTo(x + ux*(pos-3) + px*flag, y + uy*(pos-3) + py*flag);
+    ctx.lineTo(x + ux*(pos-6), y + uy*(pos-6));
+    ctx.closePath(); ctx.fill();
+    pos -= 7; kt -= 50;
+  }
+  while (kt >= 10){
+    ctx.beginPath();
+    ctx.moveTo(x + ux*pos, y + uy*pos);
+    ctx.lineTo(x + ux*(pos+2.5) + px*full, y + uy*(pos+2.5) + py*full);
+    ctx.stroke();
+    pos -= step; kt -= 10;
+  }
+  if (kt >= 5){
+    if (pos > L - 2) pos -= step;     // lone half barb sits below staff tip
+    ctx.beginPath();
+    ctx.moveTo(x + ux*pos, y + uy*pos);
+    ctx.lineTo(x + ux*(pos+1.2) + px*half, y + uy*(pos+1.2) + py*half);
+    ctx.stroke();
+  }
+}
+
+function drawHiLo(field, tc, units){
+  const g = state.grid;
+  const win = Math.max(3, Math.round(9 / (g.step / 1.5)));
+  const marks = [];
+  for (let j = 1; j < g.ny-1; j++){
+    for (let i = 1; i < g.nx-1; i++){
+      const v = field[j*g.nx+i];
+      if (isNaN(v)) continue;
+      let isMax = true, isMin = true;
+      for (let dj = -win; dj <= win && (isMax || isMin); dj++)
+        for (let di = -win; di <= win; di++){
+          const jj = j+dj, ii = i+di;
+          if (jj < 0 || jj >= g.ny || ii < 0 || ii >= g.nx || (dj === 0 && di === 0)) continue;
+          const w = field[jj*g.nx+ii];
+          if (w >= v) isMax = false;
+          if (w <= v) isMin = false;
+        }
+      if (isMax || isMin) marks.push({j, i, v, hi:isMax});
+    }
+  }
+  ctx.font = "700 20px " + getComputedStyle(document.body).getPropertyValue("--sans");
+  ctx.textAlign = "center";
+  for (const m of marks){
+    const [x, y] = project(g.lats[m.j], g.lons[m.i]);
+    if (x < 20 || x > VIEW.w-20 || y < 52 || y > VIEW.h-24) continue;
+    ctx.fillStyle = m.hi ? tc.hi : tc.lo;
+    ctx.fillText(m.hi ? "H" : "L", x, y);
+    ctx.font = "600 10.5px " + getComputedStyle(document.body).getPropertyValue("--mono");
+    ctx.fillText(String(Math.round(m.v)), x, y + 12);
+    ctx.font = "700 20px " + getComputedStyle(document.body).getPropertyValue("--sans");
+  }
+  ctx.textAlign = "left";
+}
+
+function drawLegend(scale, ci, name, units, tc, slot){
+  const oneSided = scale.min !== undefined;
+  const entries = [];
+  if (oneSided){
+    let v = scale.min;
+    for (let n = 0; n < 6; n++){ entries.push(v); v += ci; }
+  } else {
+    for (let n = -3; n <= 3; n++) entries.push(n * ci * 2);
+  }
+  const bw = 34, bh = 10;
+  const x0 = 12, y0 = VIEW.h - 34 - slot*46;
+  ctx.font = "10px " + getComputedStyle(document.body).getPropertyValue("--mono");
+  ctx.fillStyle = tc.bg;
+  ctx.globalAlpha = 0.72;
+  ctx.fillRect(x0-6, y0-16, entries.length*bw+12, 44);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = tc.sub;
+  ctx.fillText(name + " (" + units + ")", x0, y0 - 4);
+  entries.forEach((v, n) => {
+    const rgb = scale.ramp(v);
+    ctx.fillStyle = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    ctx.fillRect(x0 + n*bw, y0, bw-2, bh);
+    ctx.fillStyle = tc.sub;
+    ctx.fillText(String(+v.toFixed(1)), x0 + n*bw, y0 + bh + 11);
+  });
+}
+
+/* ---------------- Product pipeline ---------------- */
+let compiled = [];   // [{spec, param, fieldFn}] — resolved overlays ready to render per-frame
+
+async function compileOverlays(overlays){
+  const out = [];
+  for (const spec of overlays){
+    const param = PARAMS[spec.code];
+    const fieldFn = await param.make(spec.level);
+    out.push({spec, param, fieldFn});
+  }
+  return out;
+}
+
+function productTitle(){
+  const parts = compiled.map(({spec, param}) =>
+    (spec.level ? spec.level + " hPa " : "") + param.name);
+  return parts.join(" / ") || "BASE MAP";
+}
+function validLabel(t){
+  if (!state.times) return "";
+  const d = new Date(state.times[t] * 1000);
+  const days = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
+  const months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  return `VALID ${String(d.getUTCHours()).padStart(2,"0")}Z ${days[d.getUTCDay()]} ${String(d.getUTCDate()).padStart(2,"0")} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+function render(){
+  const tc = themeColors();
+  ctx.setTransform(VIEW.dpr, 0, 0, VIEW.dpr, 0, 0);
+  drawBaseMap(tc);
+  const t = state.t;
+  const factor = 4;
+  const slots = clrSlots();
+  let slotCursor = 0, legendSlot = 0;
+  // fills first (under the map lines we re-draw after), then lines, barbs, hilo
+  const passes = [["fill"], ["line"], ["barb", "hilo"]];
+  for (const pass of passes){
+    for (const {spec, param, fieldFn} of compiled){
+      const mode = spec.mode || (param.isWind ? "barb" : "line");
+      if (pass[0] === "fill" && mode !== "fill") continue;
+      if (pass[0] === "line" && mode !== "line") continue;
+      if (pass[0] === "barb" && !(mode === "barb" || spec.hilo)) continue;
+
+      if (param.isWind){
+        if (pass[0] === "barb") drawBarbs(fieldFn(t), tc);
+        continue;
+      }
+      let field = fieldFn(t);
+      const smoothPasses = (param.smooth || 0) + spec.smooth;
+      if (smoothPasses) field = smooth9(field, state.grid, smoothPasses);
+      const ci = spec.ci || param.defCI(spec.level || 500);
+
+      if (pass[0] === "fill"){
+        const scale = SCALES[param.scale];
+        if (scale){
+          const up = upsample(field, state.grid, factor);
+          drawFill(up, factor, scale, ci);
+          drawLegend(scale, ci, (spec.level ? spec.level + " " : "") + param.name, param.units, tc, legendSlot++);
+        }
+      } else if (pass[0] === "line"){
+        const up = upsample(smooth9(field, state.grid, 1), state.grid, factor);
+        const color = slots[spec.clr != null ? spec.clr : (slotCursor++ % slots.length)];
+        drawContourSet(up, factor, ci, color,
+          {dash: spec.dash, dashNeg: param.dashNeg, emph: spec.code === "THCK" ? 5400 : undefined});
+      }
+      if (pass[0] === "barb" && spec.hilo) drawHiLo(smooth9(field, state.grid, 1), tc, param.units);
+    }
+    if (pass[0] === "fill"){
+      // re-draw map lines over the fill so geography stays readable
+      drawPolylines(MAP_STATES, tc.stateLn, 0.7);
+      drawPolylines(MAP_BORDERS, tc.border, 0.8);
+      drawPolylines(MAP_COAST, tc.coast, 1.1);
+    }
+  }
+  // titles (on a translucent backing so they stay readable over fills)
+  const titleTxt = productTitle();
+  const src = state.demo ? "DEMO DATA (offline)" : "GFS via OPEN-METEO";
+  const subTxt = `${src}   F${String(t*FHR_STEP).padStart(3,"0")}   ${validLabel(t)}`;
+  ctx.font = "700 14px " + getComputedStyle(document.body).getPropertyValue("--sans");
+  const w1 = ctx.measureText(titleTxt).width;
+  ctx.font = "11.5px " + getComputedStyle(document.body).getPropertyValue("--mono");
+  const w2 = ctx.measureText(subTxt).width;
+  ctx.globalAlpha = 0.68;
+  ctx.fillStyle = tc.bg;
+  ctx.fillRect(6, 5, Math.max(w1, w2) + 14, 40);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = tc.title;
+  ctx.font = "700 14px " + getComputedStyle(document.body).getPropertyValue("--sans");
+  ctx.fillText(titleTxt, 12, 22);
+  ctx.fillStyle = tc.sub;
+  ctx.font = "11.5px " + getComputedStyle(document.body).getPropertyValue("--mono");
+  ctx.fillText(subTxt, 12, 38);
+  // UI labels
+  document.getElementById("fhr-label").textContent = "F" + String(t*FHR_STEP).padStart(3,"0");
+  document.getElementById("validtime").textContent = validLabel(t);
+  document.getElementById("fhr-slider").value = t;
+}
+
+/* ---------------- Command execution ---------------- */
+async function runCommand(str, {pushHistory = true} = {}){
+  str = str.trim();
+  if (!str) return;
+  const errEl = document.getElementById("cmderr");
+  errEl.textContent = "";
+  let parsed;
+  try { parsed = parseCommand(str); }
+  catch (e){ errEl.textContent = e.message; return; }
+  if (parsed.global.help){ document.getElementById("help").style.display = "flex"; }
+  if (parsed.global.fhr != null)
+    state.t = Math.max(0, Math.min(NT-1, Math.round(parsed.global.fhr / FHR_STEP)));
+  if (parsed.global.loop) toggleLoop();
+  if (parsed.global.mapOnly && parsed.overlays.length === 0){
+    compiled = [];
+    state.lastCommand = str;
+    render();
+    return;
+  }
+  if (parsed.overlays.length === 0){
+    if (parsed.global.fhr != null || parsed.global.loop) render();
+    return;
+  }
+  if (state.busy) return;
+  state.busy = true;
+  try {
+    compiled = await compileOverlays(parsed.overlays);
+    state.lastCommand = str;
+    if (pushHistory && state.history[0] !== str){
+      state.history.unshift(str);
+      state.history = state.history.slice(0, 40);
+      localStorage.setItem("wg11.history", JSON.stringify(state.history));
+    }
+    state.histPos = -1;
+    render();
+  } catch (e){
+    errEl.textContent = "Data error: " + e.message;
+    console.error(e);
+  } finally {
+    state.busy = false;
+    setLoading(false);
+  }
+}
+
+/* ---------------- UI wiring ---------------- */
+function setLoading(on, text){
+  document.getElementById("loading").style.display = on ? "flex" : "none";
+  if (text) document.getElementById("loading-text").textContent = text;
+  if (on) setDataBadge("busy");
+}
+function setDataBadge(mode){
+  const b = document.getElementById("databadge");
+  b.className = "badge " + mode;
+  document.getElementById("databadge-text").textContent =
+    mode === "live" ? "LIVE GFS DATA" : mode === "demo" ? "DEMO DATA (OFFLINE)" : "INGESTING…";
+}
+function toggleLoop(force){
+  const on = force !== undefined ? force : !state.looping;
+  state.looping = on;
+  document.getElementById("btn-loop").classList.toggle("toggled", on);
+  clearInterval(state.loopTimer);
+  if (on) state.loopTimer = setInterval(() => { state.t = (state.t + 1) % NT; render(); }, 450);
+}
+function stepTime(d){
+  toggleLoop(false);
+  state.t = Math.max(0, Math.min(NT-1, state.t + d));
+  render();
+}
+
+const PRESETS = [
+  {label:"500 Height / Vorticity", cmd:"HGHT 500 CI60 & VORT 500 FILL & WIND 500 BARB"},
+  {label:"850 Temp / Height",      cmd:"TEMP 850 FILL & HGHT 850 CI30 & WIND 850 BARB"},
+  {label:"MSLP / 1000-500 Thickness", cmd:"PMSL CI4 HILO & THCK CI60 DASH CLR2"},
+  {label:"300 Jet / Isotachs",     cmd:"SPED 300 FILL & HGHT 300 CI120 & WIND 300 BARB"},
+  {label:"700 RH / Height",        cmd:"RELH 700 FILL & HGHT 700 CI30"},
+  {label:"850 Temp Advection",     cmd:"TADV 850 FILL & HGHT 850 CI30 & WIND 850 BARB"},
+  {label:"Surface CAPE / MSLP",    cmd:"CAPE FILL & PMSL CI4"},
+  {label:"Precip / MSLP",          cmd:"PRCP FILL & PMSL CI4 HILO"},
+];
+const PARAM_BUTTONS = ["HGHT","TEMP","WIND","SPED","VORT","RELH","DWPT","TADV","DVRG","THCK","PMSL","CAPE"];
+
+function initUI(){
+  const domSel = document.getElementById("domain");
+  for (const [k, d] of Object.entries(DOMAINS)){
+    const o = document.createElement("option");
+    o.value = k; o.textContent = d.name;
+    domSel.appendChild(o);
+  }
+  domSel.value = state.domainKey;
+  domSel.onchange = () => {
+    state.domainKey = domSel.value;
+    localStorage.setItem("wg11.domain", state.domainKey);
+    state.cache = {}; state.times = null;
+    state.grid = buildGrid(DOMAINS[state.domainKey]);
+    sizeCanvas();
+    runCommand(state.lastCommand || PRESETS[0].cmd, {pushHistory:false});
+  };
+
+  const presetBox = document.getElementById("presets");
+  for (const p of PRESETS){
+    const b = document.createElement("button");
+    b.textContent = p.label;
+    b.title = p.cmd;
+    b.onclick = () => { document.getElementById("cmd").value = p.cmd; runCommand(p.cmd); };
+    presetBox.appendChild(b);
+  }
+  const lvBox = document.getElementById("levels");
+  for (const lv of LEVELS){
+    const b = document.createElement("button");
+    b.textContent = lv;
+    b.dataset.lv = lv;
+    if (lv === state.selLevel) b.classList.add("toggled");
+    b.onclick = () => {
+      state.selLevel = lv;
+      lvBox.querySelectorAll("button").forEach(x => x.classList.toggle("toggled", +x.dataset.lv === lv));
+    };
+    lvBox.appendChild(b);
+  }
+  const pBox = document.getElementById("params");
+  for (const code of PARAM_BUTTONS){
+    const b = document.createElement("button");
+    b.textContent = code;
+    b.title = PARAMS[code].name;
+    b.onclick = () => {
+      const p = PARAMS[code];
+      const lvl = p.needsLevel ? " " + state.selLevel : "";
+      const style = p.scale && !p.isWind && ["VORT","TADV","CAPE","RELH","SPED"].includes(code) ? " FILL" : "";
+      const cmd = code + lvl + style;
+      document.getElementById("cmd").value = cmd;
+      runCommand(cmd);
+    };
+    pBox.appendChild(b);
+  }
+
+  const cmd = document.getElementById("cmd");
+  cmd.addEventListener("keydown", e => {
+    if (e.key === "Enter"){ runCommand(cmd.value); }
+    else if (e.key === "ArrowUp"){
+      e.preventDefault();
+      if (state.histPos < state.history.length-1){ state.histPos++; cmd.value = state.history[state.histPos]; }
+    } else if (e.key === "ArrowDown"){
+      e.preventDefault();
+      if (state.histPos > 0){ state.histPos--; cmd.value = state.history[state.histPos]; }
+      else { state.histPos = -1; cmd.value = ""; }
+    }
+    e.stopPropagation();
+  });
+  document.getElementById("btn-run").onclick = () => runCommand(cmd.value);
+  document.getElementById("btn-prev").onclick = () => stepTime(-1);
+  document.getElementById("btn-next").onclick = () => stepTime(1);
+  document.getElementById("btn-first").onclick = () => { toggleLoop(false); state.t = 0; render(); };
+  document.getElementById("btn-last").onclick = () => { toggleLoop(false); state.t = NT-1; render(); };
+  document.getElementById("btn-loop").onclick = () => toggleLoop();
+  document.getElementById("fhr-slider").oninput = e => { toggleLoop(false); state.t = +e.target.value; render(); };
+  document.getElementById("btn-help").onclick = () => document.getElementById("help").style.display = "flex";
+  document.getElementById("btn-export").onclick = () => {
+    const a = document.createElement("a");
+    a.download = "wingridds11_" + productTitle().replace(/[^A-Z0-9]+/gi, "_").toLowerCase() +
+      "_f" + String(state.t*FHR_STEP).padStart(3,"0") + ".png";
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  };
+  document.getElementById("btn-theme").onclick = () => {
+    const cur = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+    document.documentElement.dataset.theme = cur;
+    localStorage.setItem("wg11.theme", cur);
+    render();
+  };
+  document.getElementById("help").addEventListener("click", e => {
+    if (e.target.id === "help") e.target.style.display = "none";
+  });
+
+  window.addEventListener("keydown", e => {
+    if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+    if (e.key === "ArrowLeft") stepTime(-1);
+    else if (e.key === "ArrowRight") stepTime(1);
+    else if (e.key === " "){ e.preventDefault(); toggleLoop(); }
+    else if (e.key === "Home"){ toggleLoop(false); state.t = 0; render(); }
+    else if (e.key === "End"){ toggleLoop(false); state.t = NT-1; render(); }
+  });
+  window.addEventListener("keydown", e => {
+    if (e.key === "F1"){
+      e.preventDefault();
+      const h = document.getElementById("help");
+      h.style.display = h.style.display === "flex" ? "none" : "flex";
+    } else if (e.key === "Escape"){
+      document.getElementById("help").style.display = "none";
+    }
+  });
+
+  canvas.addEventListener("mousemove", e => {
+    const r = canvas.getBoundingClientRect();
+    const [lat, lon] = unproject(e.clientX - r.left, e.clientY - r.top);
+    let valTxt = "";
+    const first = compiled.find(c => !c.param.isWind);
+    if (first){
+      const v = sampleField(first.fieldFn(state.t), lat, lon);
+      if (v !== null) valTxt = `  ${first.spec.code}=${(Math.round(v*10)/10)}${first.param.units.replace(/10.*/,"")}`;
+    }
+    document.getElementById("readout").textContent =
+      `${Math.abs(lat).toFixed(1)}${lat < 0 ? "S" : "N"} ${Math.abs(lon).toFixed(1)}${lon < 0 ? "W" : "E"}${valTxt}`;
+  });
+
+  window.addEventListener("resize", () => { sizeCanvas(); render(); });
+}
+function sampleField(f, lat, lon){
+  const g = state.grid;
+  const x = (lon - g.lons[0]) / g.step, y = (lat - g.lats[0]) / g.step;
+  if (x < 0 || y < 0 || x > g.nx-1 || y > g.ny-1) return null;
+  const i0 = Math.min(g.nx-2, Math.floor(x)), j0 = Math.min(g.ny-2, Math.floor(y));
+  const fx = x - i0, fy = y - j0;
+  return f[j0*g.nx+i0]*(1-fx)*(1-fy) + f[j0*g.nx+i0+1]*fx*(1-fy)
+       + f[(j0+1)*g.nx+i0]*(1-fx)*fy + f[(j0+1)*g.nx+i0+1]*fx*fy;
+}
+
+/* ---------------- Boot ---------------- */
+(function boot(){
+  const savedTheme = localStorage.getItem("wg11.theme");
+  if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+  else if (window.matchMedia("(prefers-color-scheme: light)").matches)
+    document.documentElement.dataset.theme = "light";
+  state.grid = buildGrid(DOMAINS[state.domainKey]);
+  initUI();
+  sizeCanvas();
+  render();
+  // force demo mode with ?demo=1 (useful for testing offline)
+  if (new URLSearchParams(location.search).get("demo") === "1") state.demo = true;
+  document.getElementById("cmd").value = PRESETS[0].cmd;
+  runCommand(PRESETS[0].cmd, {pushHistory:false});
+})();
+</script>
+</body>
+</html>
