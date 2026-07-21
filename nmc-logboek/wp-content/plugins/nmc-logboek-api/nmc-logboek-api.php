@@ -441,7 +441,7 @@ function nmc_post_logboek(WP_REST_Request $req) {
 
     $meteoroloog = $body['type'] === 'forecaster'
         ? ($body['meteoroloog'] ?? '')
-        : ($body['personen'][0]['naam'] ?? '');
+        : ($body['personen'][0]['naam'] ?? ($body['administratie'][0] ?? ''));
 
     $existing = $wpdb->get_var($wpdb->prepare(
         "SELECT id FROM $table WHERE datum=%s AND shift=%s AND type=%s AND meteoroloog=%s AND deleted_at IS NULL",

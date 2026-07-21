@@ -1,21 +1,26 @@
 export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = true }) {
   const isF = e.type === "forecaster";
-  const storingen = [
+  const isAdmin = e.type === "administratie";
+  const isO = e.type === "observer";
+  const storingen = isAdmin ? [] : [
     e.com_telefoon !== "OK" && `Telefoon: ${e.com_telefoon}`,
     e.com_internet !== "OK" && `Internet: ${e.com_internet}`,
     e.com_amhs !== "OK" && `AMHS: ${e.com_amhs}`,
     e.com_awos !== "OK" && `AWOS: ${e.com_awos}`,
-    !isF && e.com_werkmobiel !== "OK" && `Werkmobiel: ${e.com_werkmobiel}`,
-    !isF && e.com_charger !== "OK" && `Charger: ${e.com_charger}`,
+    isO && e.com_werkmobiel !== "OK" && `Werkmobiel: ${e.com_werkmobiel}`,
+    isO && e.com_charger !== "OK" && `Charger: ${e.com_charger}`,
     e.inst_aws !== "OK" && `AWS: ${e.inst_aws}`,
     e.inst_awos !== "OK" && `AWOS inst: ${e.inst_awos}`,
     e.inst_radar !== "OK" && `RADAR: ${e.inst_radar}`,
     isF && e.inst_pc_lhb !== "OK" && `PC LHB: ${e.inst_pc_lhb}`,
-    !isF && e.inst_conventioneel !== "OK" && `Conventioneel: ${e.inst_conventioneel}`,
+    isO && e.inst_conventioneel !== "OK" && `Conventioneel: ${e.inst_conventioneel}`,
   ].filter(Boolean);
 
   const personenNamen = (e.personen || []).map(p => p.naam).filter(Boolean).join(", ");
   const namen = isF ? (personenNamen || e.meteoroloog) : personenNamen;
+  const adminNamen = (e.administratie || []).filter(Boolean).join(", ");
+  const onderhoudNamen = (e.onderhoud || []).filter(Boolean).join(", ");
+  const werkPerUur = Object.entries(e.werkzaamheden_per_uur || {}).filter(([, v]) => v);
 
   const ef = (label, val) => {
     if (!val || val === "" || val === "OK" || (Array.isArray(val) && val.length === 0)) return null;
@@ -26,7 +31,7 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
     <div className="entry-card">
       <div className="entry-header">
         <div className="entry-meta">
-          <span className={`badge badge-${e.type}`}>{isF ? "Forecaster" : "Observer"}</span>
+          <span className={`badge badge-${e.type}`}>{isF ? "Forecaster" : isAdmin ? "Administratie" : "Observer"}</span>
           <span className="entry-date">{e.datum}</span>
           <span style={{ fontSize: 11, color: "var(--inkLo)", fontWeight: 600 }}>{e.shift || "—"}</span>
           {storingen.length > 0 && <span className="badge badge-warn">⚠ Storing</span>}
@@ -37,8 +42,11 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
         </div>
       </div>
       <div className="entry-body">
-        {ef(isF ? "Meteoroloog" : "Adj.-meteorologen", namen)}
-        {isF && ef("Verwachtingen", e.verwachtingen)}
+        {!isAdmin && ef(isF ? "Meteoroloog" : "Adj.-meteorologen", namen)}
+        {isAdmin && ef("Administratie", adminNamen)}
+        {isAdmin && ef("Onderhoudmedewerker", onderhoudNamen)}
+        {isF && (e.verwachtingen_checks || []).length > 0 && ef("Verwachtingen uitgebracht", e.verwachtingen_checks)}
+        {isF && ef("Anders (omschrijf)", e.verwachtingen)}
         {isF && (e.wu_products?.length || e.wu_anders) && <div className="ef-block"><div className="ef-label">Web Upload</div><div className="ef-value">{[...(e.wu_products || []), e.wu_anders && `Anders: ${e.wu_anders}`].filter(Boolean).join(", ")}</div></div>}
         {isF && e.notam_verzonden && (
           <div className="ef-block">
@@ -50,7 +58,12 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
           </div>
         )}
         {storingen.length > 0 && <div className="ef-block" style={{ borderLeft: "3px solid var(--danger)" }}><div className="ef-label">Storingen / Defecten</div><div className="ef-value">{storingen.join("\n")}</div></div>}
-        {!isF && (e.personen || []).map((p, idx) => {
+        {isAdmin && werkPerUur.length > 0 && (
+          <div className="ef-block"><div className="ef-label">Werkzaamheden per uur</div><div className="ef-value">
+            {werkPerUur.map(([uur, v]) => `${uur}: ${v}`).join("\n")}
+          </div></div>
+        )}
+        {isO && (e.personen || []).map((p, idx) => {
           const heeftWz = (p.synop_gedaan?.length || p.metar_gedaan?.length || p.klima_gedaan?.length || p.taf_gedaan?.length || p.digitaal_speci_gedaan || p.rr_gedaan);
           if (!heeftWz) return null;
           return (

@@ -95,6 +95,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 .badge{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.08em;padding:3px 8px;border-radius:4px;text-transform:uppercase;}
 .badge-forecaster{background:rgba(0,200,150,.18);color:var(--green);}
 .badge-observer{background:rgba(232,160,32,.18);color:var(--warn);}
+.badge-administratie{background:rgba(37,63,94,.35);color:#7FA8D9;}
 .badge-warn{background:rgba(217,64,64,.2);color:var(--danger);}
 .entry-date{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--inkLo);}
 .entry-body{padding:12px 14px;display:flex;flex-direction:column;gap:8px;}

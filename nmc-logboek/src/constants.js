@@ -49,6 +49,23 @@ export const WEB_PRODUCTS = [
 
 export const NOTAM_SHIFTS = [...SHIFTS];
 
+// Verwachtingen die per shift uitgebracht kunnen worden (aanvinkopties in
+// Basisgegevens bij Forecaster).
+export const VERWACHTINGEN_PER_SHIFT = {
+  "Ochtenddienst (08:00–15:00 LT)": ["TAF", "Verw OW/NCCR", "Media", "Tabular"],
+  "Middagdienst (15:00–22:00 LT)": ["TAF", "WBS"],
+  "Nachtdienst (22:00–08:00 LT)": ["TAF 06 UTC", "TAF 12 UTC", "Tabular"],
+};
+
+// Administratie werkt ma–vr 08:00–15:00 LT, zonder shiften. De shift-waarde
+// wordt intern gebruikt (o.a. voor de duplicaat-check) maar niet aan de
+// gebruiker getoond.
+export const ADMIN_SHIFT = "Kantoordienst (08:00–15:00 LT)";
+export const ADMIN_UREN = [
+  "08:00–09:00", "09:00–10:00", "10:00–11:00", "11:00–12:00",
+  "12:00–13:00", "13:00–14:00", "14:00–15:00",
+];
+
 export const VERWACHT_PER_SHIFT = {
   "Ochtenddienst (08:00–15:00 LT)": { synop: 7, metar: 7, klima: 2, upload_metar: 7, digitaal_wx: 7, digitaal_klima: 2, wis: 3, rr: 1, taf: 2 },
   "Middagdienst (15:00–22:00 LT)": { synop: 7, metar: 7, klima: 2, upload_metar: 7, digitaal_wx: 7, digitaal_klima: 2, wis: 2, rr: 0, taf: 2 },
@@ -133,6 +150,7 @@ export const ALL_EXPORT_IDS = EXPORT_TREE.flatMap(s => s.elements.map(el => el.i
 export const TABS = [
   { id: "forecaster", label: "Forecaster", loginLabel: "Forecaster Login", roles: ["forecaster", "chef", "admin"] },
   { id: "observer", label: "Observer", loginLabel: "Observer Login", roles: ["observer", "chef", "admin"] },
+  { id: "administratie", label: "Administratie", loginLabel: "Administratie Login", roles: ["administratie", "chef", "admin"] },
   { id: "overzicht", label: "Overzicht", loginLabel: "Overzicht Login", roles: ["administratie", "chef", "admin"] },
   { id: "analyse", label: "Analyse", loginLabel: "Analyse Login", roles: ["chef", "admin"] },
   { id: "beheer", label: "Beheer", loginLabel: "Beheer Login", roles: ["admin"] },

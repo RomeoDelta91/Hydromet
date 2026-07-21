@@ -39,17 +39,29 @@ function statusRows(labels, entry) {
 
 function basisgegevensSection(e) {
   const isF = e.type === "forecaster";
+  const isAdmin = e.type === "administratie";
   const personenNamen = (e.personen || []).map(p => p.naam).filter(Boolean).join(", ");
-  const rows = [
-    kv("Datum", e.datum),
-    kv("Shift", e.shift),
-    kv(isF ? "Meteoroloog" : "Adjunct-meteorologen", isF ? (personenNamen || e.meteoroloog || "") : personenNamen),
-  ];
+  const rows = [kv("Datum", e.datum)];
+  if (!isAdmin) rows.push(kv("Shift", e.shift));
+  if (isAdmin) {
+    rows.push(kv("Administratie", (e.administratie || []).filter(Boolean).join(", ") || "-"));
+    rows.push(kv("Onderhoudmedewerker", (e.onderhoud || []).filter(Boolean).join(", ") || "-"));
+  } else {
+    rows.push(kv(isF ? "Meteoroloog" : "Adjunct-meteorologen", isF ? (personenNamen || e.meteoroloog || "") : personenNamen));
+  }
   if (isF) {
-    if (e.verwachtingen) rows.push(kv("Verwachtingen uitgebracht", e.verwachtingen));
+    if ((e.verwachtingen_checks || []).length) rows.push(kv("Verwachtingen uitgebracht", e.verwachtingen_checks.join(", ")));
+    if (e.verwachtingen) rows.push(kv("Anders (omschrijf)", e.verwachtingen));
   }
   rows.push(kv("Ingevuld door", e.ingevuld_door || ""));
   return [heading("Basisgegevens"), table(rows)];
+}
+
+function administratieWerkSection(e) {
+  const per = e.werkzaamheden_per_uur || {};
+  const rows = Object.entries(per).filter(([, v]) => v).map(([uur, v]) => kv(uur, v));
+  if (!rows.length) return [];
+  return [heading("Werkzaamheden per uur", HeadingLevel.HEADING_3), table(rows)];
 }
 
 function communicatieSection(e, commLabels) {
@@ -134,25 +146,28 @@ function bijzonderhedenSection(e, ids) {
 // gefilterd zodat je bijv. binnen Instrumenten alleen RADAR kunt exporteren.
 function entrySections(e, ids) {
   const isF = e.type === "forecaster";
+  const isAdmin = e.type === "administratie";
   const filterLabels = full => Object.fromEntries(Object.entries(full).filter(([k]) => ids.includes(k)));
-  const commLabels = filterLabels(isF
+  const commLabels = isAdmin ? {} : filterLabels(isF
     ? { com_telefoon: "Telefoon", com_internet: "Internet", com_amhs: "AMHS", com_awos: "AWOS" }
     : { com_telefoon: "Telefoon", com_internet: "Internet", com_amhs: "AMHS", com_awos: "AWOS", com_werkmobiel: "Werkmobiel", com_charger: "Charger" });
-  const instLabels = filterLabels(isF
+  const instLabels = isAdmin ? {} : filterLabels(isF
     ? { inst_aws: "AWS", inst_awos: "AWOS", inst_pc_lhb: "PC LHB", inst_radar: "RADAR" }
     : { inst_conventioneel: "Conventioneel", inst_aws: "AWS", inst_awos: "AWOS", inst_radar: "RADAR" });
 
   const sec = id => ids.includes(id);
+  const typeLabel = isF ? "Forecaster" : isAdmin ? "Administratie" : "Observer";
   const blocks = [
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
-      children: [new TextRun({ text: `${e.datum} — ${e.shift} — ${isF ? "Forecaster" : "Observer"}` })],
+      children: [new TextRun({ text: isAdmin ? `${e.datum} — ${typeLabel}` : `${e.datum} — ${e.shift} — ${typeLabel}` })],
     }),
   ];
   if (sec("basis")) blocks.push(...basisgegevensSection(e));
   if (Object.keys(commLabels).length) blocks.push(...communicatieSection(e, commLabels));
   if (Object.keys(instLabels).length) blocks.push(...instrumentenSection(e, instLabels));
-  if (sec("werkzaamheden")) blocks.push(...werkzaamhedenSection(e));
+  if (sec("werkzaamheden") && e.type === "observer") blocks.push(...werkzaamhedenSection(e));
+  if (sec("werkzaamheden") && isAdmin) blocks.push(...administratieWerkSection(e));
   if (sec("webupload")) blocks.push(...webUploadSection(e));
   if (sec("notams")) blocks.push(...notamSection(e));
   blocks.push(...bijzonderhedenSection(e, ids));

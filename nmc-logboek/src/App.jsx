@@ -4,6 +4,7 @@ import { logout as apiLogout, saveEntry } from "./api.js";
 import LoginWithName from "./components/LoginWithName.jsx";
 import ForecasterForm from "./components/ForecasterForm.jsx";
 import ObserverForm from "./components/ObserverForm.jsx";
+import AdministratieForm from "./components/AdministratieForm.jsx";
 import Overzicht from "./components/Overzicht.jsx";
 import AnalysePanel from "./components/AnalysePanel.jsx";
 import UserAdmin from "./components/UserAdmin.jsx";
@@ -96,6 +97,7 @@ export default function App() {
 
       {tab === "forecaster" && <ForecasterForm onSave={handleSaveForecaster} gebruiker={gebruiker} />}
       {tab === "observer" && <ObserverForm onSave={handleSaveForecaster} gebruiker={gebruiker} />}
+      {tab === "administratie" && <AdministratieForm onSave={handleSaveForecaster} gebruiker={gebruiker} />}
       {tab === "overzicht" && <Overzicht canDelete={canModify} canEdit={canModify} showToast={showToast} />}
       {tab === "analyse" && <AnalysePanel />}
       {tab === "beheer" && <UserAdmin showToast={showToast} />}

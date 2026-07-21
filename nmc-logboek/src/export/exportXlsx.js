@@ -7,6 +7,7 @@ const COLUMNS = [
 ];
 
 function storingenVoor(e) {
+  if (e.type === "administratie") return "";
   const isF = e.type === "forecaster";
   return [
     e.com_telefoon !== "OK" && `Telefoon: ${e.com_telefoon}`,
@@ -39,6 +40,24 @@ function rowsForEntry(e) {
       storingen,
       notam_verzonden: e.notam_verzonden ? "Ja" : "Nee",
       notam_shifts: (e.notam_shifts || []).join(", "),
+      byz_algemeen: e.byz_algemeen || "",
+    }];
+  }
+  if (e.type === "administratie") {
+    const namen = [...(e.administratie || []), ...(e.onderhoud || [])].filter(Boolean).join(", ");
+    return [{
+      datum: e.datum,
+      shift: "",
+      type: e.type,
+      naam: namen,
+      werktijd_van: "",
+      werktijd_tot: "",
+      synop_totaal: "",
+      metar_totaal: "",
+      taf_totaal: "",
+      storingen: "",
+      notam_verzonden: "",
+      notam_shifts: "",
       byz_algemeen: e.byz_algemeen || "",
     }];
   }

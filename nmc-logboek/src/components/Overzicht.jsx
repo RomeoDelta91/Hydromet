@@ -5,6 +5,7 @@ import { getEntries, deleteEntry, updateEntry } from "../api.js";
 import EntryCard from "./EntryCard.jsx";
 import ForecasterForm from "./ForecasterForm.jsx";
 import ObserverForm from "./ObserverForm.jsx";
+import AdministratieForm from "./AdministratieForm.jsx";
 import { exportDocx } from "../export/exportDocx.js";
 import { exportXlsx } from "../export/exportXlsx.js";
 
@@ -14,6 +15,8 @@ function namenVan(e) {
   const uit = [];
   if (e.meteoroloog) uit.push(e.meteoroloog);
   (e.personen || []).forEach(p => p.naam && uit.push(p.naam));
+  (e.administratie || []).forEach(n => n && uit.push(n));
+  (e.onderhoud || []).forEach(n => n && uit.push(n));
   return uit;
 }
 
@@ -101,7 +104,7 @@ export default function Overzicht({ canDelete, canEdit = true, showToast }) {
   };
 
   if (editing) {
-    const FormComp = editing.type === "forecaster" ? ForecasterForm : ObserverForm;
+    const FormComp = editing.type === "forecaster" ? ForecasterForm : editing.type === "administratie" ? AdministratieForm : ObserverForm;
     return (
       <div className="section">
         <button className="btn btn-secondary" style={{ marginBottom: 12 }} onClick={() => setEditing(null)}>← Terug naar overzicht</button>
@@ -142,6 +145,7 @@ export default function Overzicht({ canDelete, canEdit = true, showToast }) {
               <option value="alle">Alle</option>
               <option value="forecaster">Forecasters</option>
               <option value="observer">Observers</option>
+              <option value="administratie">Administratie</option>
             </select>
           </div>
           <div className="filter-field"><label>Naam (meteoroloog / adjunct)</label>

@@ -11,8 +11,6 @@ import Aanvragen from "./ui/Aanvragen.jsx";
 
 export const DEF_PERSOON = {
   naam: "",
-  werktijd_van: "",
-  werktijd_tot: "",
   synop_gedaan: [],
   metar_gedaan: [],
   klima_gedaan: [],
@@ -30,8 +28,6 @@ const DEF_O_SHIFT = {
   datum: today(),
   shift: "",
   personen: [{ ...DEF_PERSOON }],
-  administratie: [""],
-  onderhoud: [""],
   security: [""],
   com_telefoon: "OK",
   com_internet: "OK",
@@ -67,13 +63,14 @@ const DEF_O_SHIFT = {
   byz_algemeen: "",
 };
 
-// Oudere entries hadden administratie/onderhoud/security als los tekstveld en
-// geen ziekmeldingen/aanvragen. Normaliseer die naar de nieuwe (array-)vorm.
+// Oudere entries hadden security als los tekstveld en geen ziekmeldingen/
+// aanvragen. Normaliseer die naar de nieuwe (array-)vorm. Administratie en
+// onderhoud zijn verhuisd naar de aparte Administratie-tab; oudere entries
+// die deze velden nog hebben blijven ongemoeid (worden niet meer getoond,
+// maar gaan niet verloren bij het opslaan van een bewerking).
 function normalizeInitial(initial) {
   const merged = initial ? { ...DEF_O_SHIFT, ...initial } : { ...DEF_O_SHIFT, datum: today() };
-  ["administratie", "onderhoud", "security"].forEach(k => {
-    if (!Array.isArray(merged[k])) merged[k] = merged[k] ? [merged[k]] : [""];
-  });
+  if (!Array.isArray(merged.security)) merged.security = merged.security ? [merged.security] : [""];
   if (!Array.isArray(merged.ziekmeldingen)) merged.ziekmeldingen = [];
   if (!Array.isArray(merged.aanvragen)) merged.aanvragen = [];
   return merged;
@@ -189,8 +186,6 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
             <div className="field"><label>Shift {errors.shift && <span style={{ color: "var(--danger)" }}>*</span>}</label><select value={f.shift} onChange={e => upd("shift", e.target.value)} style={reqStyle("shift")}><option value="">Selecteer…</option>{SHIFTS.map(s => <option key={s}>{s}</option>)}</select></div>
           </div>
           <div className="field-grid">
-            <RepeatText label="Administratie" value={f.administratie} onChange={v => upd("administratie", v)} placeholder="Naam" />
-            <RepeatText label="Onderhoudmedewerker" value={f.onderhoud} onChange={v => upd("onderhoud", v)} placeholder="Naam" />
             <RepeatText label="Security" value={f.security} onChange={v => upd("security", v)} placeholder="Naam" />
           </div>
         </div>
@@ -210,10 +205,6 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
                   <label>Naam {errors[`persoon_naam_${idx}`] && <span style={{ color: "var(--danger)" }}>*</span>}</label>
                   <input value={p.naam} onChange={e => updPersoon(idx, "naam", e.target.value)} style={errors[`persoon_naam_${idx}`] ? { borderColor: "var(--danger)" } : {}} placeholder="Volledige naam" />
                 </div>
-              </div>
-              <div className="field-grid">
-                <div className="field"><label>Werktijd van (LT)</label><input type="time" value={p.werktijd_van} onChange={e => updPersoon(idx, "werktijd_van", e.target.value)} /></div>
-                <div className="field"><label>Werktijd tot (LT)</label><input type="time" value={p.werktijd_tot} onChange={e => updPersoon(idx, "werktijd_tot", e.target.value)} /></div>
               </div>
             </div>
           ))}
