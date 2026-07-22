@@ -83,14 +83,15 @@ function werkzaamhedenSection(e) {
   const blocks = [heading("Werkzaamheden per persoon", HeadingLevel.HEADING_3)];
   (e.personen || []).forEach((p, idx) => {
     blocks.push(new Paragraph({ text: p.naam || `Persoon ${idx + 1}`, heading: HeadingLevel.HEADING_4 }));
+    const withInit = (arr, init) => ((arr || []).join(", ") || "-") + (init ? ` (${init})` : "");
     const rows = [
       kv("Werktijd", `${p.werktijd_van || "?"} - ${p.werktijd_tot || "?"}`),
-      kv("Synop", (p.synop_gedaan || []).join(", ") || "-"),
-      kv("Metar", (p.metar_gedaan || []).join(", ") || "-"),
-      kv("Klima", (p.klima_gedaan || []).join(", ") || "-"),
-      kv("TAF", (p.taf_gedaan || []).join(", ") || "-"),
-      kv("Digitaal SPECI", p.digitaal_speci_gedaan ? (p.digitaal_speci_welke || "Ja") : "-"),
-      kv("RR naar Klima", p.rr_gedaan ? "Verzonden" : "-"),
+      kv("Synop-boek", withInit(p.synop_gedaan, p.synop_init)),
+      kv("Metar-AMHS", withInit(p.metar_gedaan, p.metar_init)),
+      kv("Klimawaarneming-boek", withInit(p.klima_gedaan, p.klima_init)),
+      kv("TAF", withInit(p.taf_gedaan, p.taf_init)),
+      kv("Digitaal SPECI", p.digitaal_speci_gedaan ? (p.digitaal_speci_welke || "Ja") + (p.digitaal_speci_init ? ` (${p.digitaal_speci_init})` : "") : "-"),
+      kv("RR naar Klima", p.rr_gedaan ? "Verzonden" + (p.rr_init ? ` (${p.rr_init})` : "") : "-"),
     ];
     blocks.push(table(rows));
   });

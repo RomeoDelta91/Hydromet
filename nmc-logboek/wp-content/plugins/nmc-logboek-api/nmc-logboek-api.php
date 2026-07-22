@@ -245,6 +245,53 @@ add_action('rest_api_init', function() {
 // Auth handlers
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Login-logboek: legt elke login-poging vast (wie, vanaf welk IP, geslaagd of
+// niet) voor kwaliteits-/fraudecontrole. Eén tekstbestand per kalendermaand,
+// automatisch aangemaakt zodra de maand wisselt — geen aparte rotatie-taak
+// nodig, de bestandsnaam bevat het jaar+maand.
+function nmc_logs_dir() {
+    $dir = plugin_dir_path(__FILE__) . 'logs/';
+    if (!file_exists($dir)) {
+        wp_mkdir_p($dir);
+    }
+    $htaccess = $dir . '.htaccess';
+    if (!file_exists($htaccess)) {
+        file_put_contents($htaccess, "Deny from all\n");
+    }
+    $index = $dir . 'index.php';
+    if (!file_exists($index)) {
+        file_put_contents($index, "<?php\n// Silence is golden.\n");
+    }
+    return $dir;
+}
+
+function nmc_client_ip() {
+    foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_X_REAL_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'] as $key) {
+        if (!empty($_SERVER[$key])) {
+            $ip = $_SERVER[$key];
+            if (strpos($ip, ',') !== false) $ip = trim(explode(',', $ip)[0]);
+            return sanitize_text_field($ip);
+        }
+    }
+    return 'onbekend';
+}
+
+function nmc_log_login($username, $naam, $role, $status) {
+    $dir  = nmc_logs_dir();
+    $file = $dir . 'login-log-' . date('Y-m') . '.txt';
+    $line = sprintf(
+        "[%s] status=%s gebruikersnaam=%s naam=%s rol=%s ip=%s\n",
+        current_time('mysql'),
+        $status,
+        $username,
+        $naam ?: '-',
+        $role ?: '-',
+        nmc_client_ip()
+    );
+    file_put_contents($file, $line, FILE_APPEND | LOCK_EX);
+}
+
 function nmc_login(WP_REST_Request $req) {
     global $wpdb;
     $table = $wpdb->prefix . 'nmc_logboek_users';
@@ -261,8 +308,11 @@ function nmc_login(WP_REST_Request $req) {
     ), ARRAY_A);
 
     if (!$user || !password_verify($password, $user['password_hash'])) {
+        nmc_log_login($username, $user['naam'] ?? '', $user['role'] ?? '', 'MISLUKT');
         return rest_ensure_response(['success' => false, 'error' => 'Onjuiste gebruikersnaam of wachtwoord.']);
     }
+
+    nmc_log_login($username, $user['naam'], $user['role'], 'OK');
 
     return rest_ensure_response([
         'success' => true,

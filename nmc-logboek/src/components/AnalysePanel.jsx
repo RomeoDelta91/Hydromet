@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   WZ_LABELS, VERWACHT_PER_SHIFT, STATUS_KEYS_COMM_OBS, STATUS_KEYS_INST_OBS,
   STATUS_KEYS_COMM_F, STATUS_KEYS_INST_F, SYSTEM_LABELS,
@@ -7,6 +7,8 @@ import {
 import { today, ltToUtcMinutes, utcLabelToMinutes, inRange, inRangeKlima } from "../utils.js";
 import { getEntries } from "../api.js";
 import BarChart from "./ui/BarChart.jsx";
+import LineChart from "./ui/LineChart.jsx";
+import { downloadSvgAsPng } from "../utils/exportChartPng.js";
 
 function getPersonalResponsibilityFull(persoon, shift) {
   if (!shift) return null;
@@ -47,11 +49,11 @@ function getPersonalResponsibilityFull(persoon, shift) {
     tot: persoon.werktijd_tot,
     hasWindow: !!(persoon.werktijd_van && persoon.werktijd_tot),
     sections: [
-      { key: "synop", label: "Synop", verantw: resp_synop, gemist: miss(resp_synop, done_synop) },
-      { key: "metar", label: "Metar", verantw: resp_metar, gemist: miss(resp_metar, done_metar) },
+      { key: "synop", label: "Synop-boek", verantw: resp_synop, gemist: miss(resp_synop, done_synop) },
+      { key: "metar", label: "Metar-AMHS", verantw: resp_metar, gemist: miss(resp_metar, done_metar) },
       { key: "upload_metar", label: "Upload Metar", verantw: resp_upload_metar, gemist: miss(resp_upload_metar, done_upload_metar) },
       { key: "digitaal_wx", label: "Digitaal WX", verantw: resp_digitaal_wx, gemist: miss(resp_digitaal_wx, done_digitaal_wx) },
-      { key: "klima", label: "Klima waarneming", verantw: resp_klima, gemist: miss(resp_klima, done_klima) },
+      { key: "klima", label: "Klimawaarneming-boek", verantw: resp_klima, gemist: miss(resp_klima, done_klima) },
       { key: "digitaal_klima", label: "Digitaal Klima", verantw: resp_digitaal_klima, gemist: miss(resp_digitaal_klima, done_digitaal_klima) },
       { key: "wis", label: "WIS 2.0 Synop", verantw: resp_wis, gemist: miss(resp_wis, done_wis) },
       { key: "taf", label: "TAF verzonden", verantw: resp_taf, gemist: miss(resp_taf, done_taf) },
@@ -75,6 +77,8 @@ export default function AnalysePanel() {
   const [maand, setMaand] = useState(today().slice(0, 7));
   const [subTab, setSubTab] = useState("observer");
   const [grafiekId, setGrafiekId] = useState("ziekmeldingen");
+  const [grafiekType, setGrafiekType] = useState("bar");
+  const chartRef = useRef(null);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -609,13 +613,24 @@ export default function AnalysePanel() {
                 <span>📈 Grafiek per element</span>
               </div>
               <div className="a-card-body">
-                <div className="month-sel" style={{ marginBottom: 14 }}>
+                <div className="month-sel" style={{ marginBottom: 14, flexWrap: "wrap" }}>
                   <label>Element</label>
                   <select value={grafiekId} onChange={e => setGrafiekId(e.target.value)}>
                     {GRAFIEK_OPTS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
                   </select>
+                  <div className="chart-type-toggle">
+                    <button type="button" className={`chart-type-btn${grafiekType === "bar" ? " active" : ""}`} onClick={() => setGrafiekType("bar")}>📊 Staaf</button>
+                    <button type="button" className={`chart-type-btn${grafiekType === "line" ? " active" : ""}`} onClick={() => setGrafiekType("line")}>📈 Lijn</button>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-export"
+                    onClick={() => downloadSvgAsPng(chartRef.current, `NMC_Grafiek_${grafiekId}_${maand}.png`)}
+                  >💾 Opslaan als afbeelding</button>
                 </div>
-                <BarChart {...grafiekData(grafiekId)} />
+                {grafiekType === "bar"
+                  ? <BarChart ref={chartRef} {...grafiekData(grafiekId)} />
+                  : <LineChart ref={chartRef} {...grafiekData(grafiekId)} />}
               </div>
             </div>
           )}

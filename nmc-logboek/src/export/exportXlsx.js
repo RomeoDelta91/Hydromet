@@ -42,13 +42,14 @@ const fmtAanvr = arr => (arr || []).map(a => [a.type, a.naam, a.periode].filter(
 
 function werkzaamhedenVoor(e, persoon) {
   if (e.type === "observer" && persoon) {
+    const withInit = (arr, init) => (arr || []).join(", ") + (init ? ` (${init})` : "");
     return [
-      `Synop: ${(persoon.synop_gedaan || []).join(", ") || "-"}`,
-      `Metar: ${(persoon.metar_gedaan || []).join(", ") || "-"}`,
-      `Klima: ${(persoon.klima_gedaan || []).join(", ") || "-"}`,
-      `TAF: ${(persoon.taf_gedaan || []).join(", ") || "-"}`,
-      persoon.digitaal_speci_gedaan ? `SPECI: ${persoon.digitaal_speci_welke || "Ja"}` : "",
-      persoon.rr_gedaan ? "RR naar Klima: Verzonden" : "",
+      `Synop-boek: ${withInit(persoon.synop_gedaan, persoon.synop_init) || "-"}`,
+      `Metar-AMHS: ${withInit(persoon.metar_gedaan, persoon.metar_init) || "-"}`,
+      `Klimawaarneming-boek: ${withInit(persoon.klima_gedaan, persoon.klima_init) || "-"}`,
+      `TAF: ${withInit(persoon.taf_gedaan, persoon.taf_init) || "-"}`,
+      persoon.digitaal_speci_gedaan ? `SPECI: ${persoon.digitaal_speci_welke || "Ja"}${persoon.digitaal_speci_init ? ` (${persoon.digitaal_speci_init})` : ""}` : "",
+      persoon.rr_gedaan ? `RR naar Klima: Verzonden${persoon.rr_init ? ` (${persoon.rr_init})` : ""}` : "",
     ].filter(Boolean).join(" | ");
   }
   if (e.type === "administratie") {

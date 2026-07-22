@@ -5,6 +5,7 @@ import { checkDuplicate } from "../api.js";
 import Field from "./ui/Field.jsx";
 import StatusRow from "./ui/StatusRow.jsx";
 import CheckboxGroup from "./ui/CheckboxGroup.jsx";
+import InitialsBox from "./ui/InitialsBox.jsx";
 import RepeatText from "./ui/RepeatText.jsx";
 import Ziekmeldingen from "./ui/Ziekmeldingen.jsx";
 import Aanvragen from "./ui/Aanvragen.jsx";
@@ -12,16 +13,26 @@ import Aanvragen from "./ui/Aanvragen.jsx";
 export const DEF_PERSOON = {
   naam: "",
   synop_gedaan: [],
+  synop_init: "",
   metar_gedaan: [],
+  metar_init: "",
   klima_gedaan: [],
+  klima_init: "",
   taf_gedaan: [],
+  taf_init: "",
   wis_synop_gedaan: [],
+  wis_synop_init: "",
   upload_metar_gedaan: [],
+  upload_metar_init: "",
   digitaal_wx_gedaan: [],
+  digitaal_wx_init: "",
   digitaal_klima_gedaan: [],
+  digitaal_klima_init: "",
   digitaal_speci_gedaan: false,
   digitaal_speci_welke: "",
+  digitaal_speci_init: "",
   rr_gedaan: false,
+  rr_init: "",
 };
 
 const DEF_O_SHIFT = {
@@ -253,27 +264,95 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
           )}
           {shift && (
             <>
-              <div className="time-block"><div className="time-block-label">Synop</div>{synopTimesP.length > 0 ? <CheckboxGroup options={synopTimesP} selected={persoonActief.synop_gedaan} onChange={v => updPersoon(idxActief, "synop_gedaan", v)} hint="vink aan welke gemaakt" /> : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}</div>
-              <div className="time-block"><div className="time-block-label">Metars</div>{synopTimesP.length > 0 ? <CheckboxGroup options={synopTimesP} selected={persoonActief.metar_gedaan} onChange={v => updPersoon(idxActief, "metar_gedaan", v)} hint="vink aan welke gemaakt" /> : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}</div>
-              <div className="time-block"><div className="time-block-label">Klima waarneming</div>{klimaTimesP.length > 0 ? <CheckboxGroup options={klimaTimesP} selected={persoonActief.klima_gedaan} onChange={v => updPersoon(idxActief, "klima_gedaan", v)} hint="vink aan welke gedaan" /> : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>{shift ? "Geen klima waarneming in dit tijdvenster." : "Selecteer een shift."}</p>}</div>
-              <div className="time-block"><div className="time-block-label">Upload Metar website</div>{synopTimesP.length > 0 ? <CheckboxGroup options={synopTimesP} selected={persoonActief.upload_metar_gedaan} onChange={v => updPersoon(idxActief, "upload_metar_gedaan", v)} hint="vink aan welke geüpload" /> : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}</div>
-              <div className="time-block"><div className="time-block-label">Digitale invoer WX website</div>{synopTimesP.length > 0 ? <CheckboxGroup options={synopTimesP} selected={persoonActief.digitaal_wx_gedaan} onChange={v => updPersoon(idxActief, "digitaal_wx_gedaan", v)} hint="vink aan welke ingevoerd" /> : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}</div>
-              <div className="time-block"><div className="time-block-label">Digitale invoer Klima website</div>{klimaTimesP.length > 0 ? <CheckboxGroup options={klimaTimesP} selected={persoonActief.digitaal_klima_gedaan} onChange={v => updPersoon(idxActief, "digitaal_klima_gedaan", v)} hint="vink aan welke ingevoerd" /> : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>{shift ? "Geen klima invoer in dit tijdvenster." : "Selecteer een shift."}</p>}</div>
+              <div className="time-block">
+                <div className="time-block-label">Synop-boek</div>
+                {synopTimesP.length > 0 ? (
+                  <>
+                    <CheckboxGroup options={synopTimesP} selected={persoonActief.synop_gedaan} onChange={v => updPersoon(idxActief, "synop_gedaan", v)} hint="vink aan welke gemaakt" />
+                    <InitialsBox value={persoonActief.synop_init} onChange={v => updPersoon(idxActief, "synop_init", v)} />
+                  </>
+                ) : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}
+              </div>
+              <div className="time-block">
+                <div className="time-block-label">Metar-AMHS</div>
+                {synopTimesP.length > 0 ? (
+                  <>
+                    <CheckboxGroup options={synopTimesP} selected={persoonActief.metar_gedaan} onChange={v => updPersoon(idxActief, "metar_gedaan", v)} hint="vink aan welke gemaakt" />
+                    <InitialsBox value={persoonActief.metar_init} onChange={v => updPersoon(idxActief, "metar_init", v)} />
+                  </>
+                ) : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}
+              </div>
+              <div className="time-block">
+                <div className="time-block-label">Klimawaarneming-boek</div>
+                {klimaTimesP.length > 0 ? (
+                  <>
+                    <CheckboxGroup options={klimaTimesP} selected={persoonActief.klima_gedaan} onChange={v => updPersoon(idxActief, "klima_gedaan", v)} hint="vink aan welke gedaan" />
+                    <InitialsBox value={persoonActief.klima_init} onChange={v => updPersoon(idxActief, "klima_init", v)} />
+                  </>
+                ) : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>{shift ? "Geen klima waarneming in dit tijdvenster." : "Selecteer een shift."}</p>}
+              </div>
+              <div className="time-block">
+                <div className="time-block-label">Upload Metar website</div>
+                {synopTimesP.length > 0 ? (
+                  <>
+                    <CheckboxGroup options={synopTimesP} selected={persoonActief.upload_metar_gedaan} onChange={v => updPersoon(idxActief, "upload_metar_gedaan", v)} hint="vink aan welke geüpload" />
+                    <InitialsBox value={persoonActief.upload_metar_init} onChange={v => updPersoon(idxActief, "upload_metar_init", v)} />
+                  </>
+                ) : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}
+              </div>
+              <div className="time-block">
+                <div className="time-block-label">Digitale invoer WX website</div>
+                {synopTimesP.length > 0 ? (
+                  <>
+                    <CheckboxGroup options={synopTimesP} selected={persoonActief.digitaal_wx_gedaan} onChange={v => updPersoon(idxActief, "digitaal_wx_gedaan", v)} hint="vink aan welke ingevoerd" />
+                    <InitialsBox value={persoonActief.digitaal_wx_init} onChange={v => updPersoon(idxActief, "digitaal_wx_init", v)} />
+                  </>
+                ) : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}
+              </div>
+              <div className="time-block">
+                <div className="time-block-label">Digitale invoer Klima website</div>
+                {klimaTimesP.length > 0 ? (
+                  <>
+                    <CheckboxGroup options={klimaTimesP} selected={persoonActief.digitaal_klima_gedaan} onChange={v => updPersoon(idxActief, "digitaal_klima_gedaan", v)} hint="vink aan welke ingevoerd" />
+                    <InitialsBox value={persoonActief.digitaal_klima_init} onChange={v => updPersoon(idxActief, "digitaal_klima_init", v)} />
+                  </>
+                ) : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>{shift ? "Geen klima invoer in dit tijdvenster." : "Selecteer een shift."}</p>}
+              </div>
               <div className="time-block">
                 <div className="time-block-label">Digitale invoer SPECI website</div>
                 <label className={`cb-item${persoonActief.digitaal_speci_gedaan ? " checked" : ""}`} style={{ display: "inline-flex", marginBottom: 8 }}>
                   <input type="checkbox" checked={persoonActief.digitaal_speci_gedaan} onChange={e => updPersoon(idxActief, "digitaal_speci_gedaan", e.target.checked)} />SPECI's ingevoerd deze shift
                 </label>
                 {persoonActief.digitaal_speci_gedaan && <Field label="Welke SPECI's ingevoerd?" field="digitaal_speci_welke" val={persoonActief.digitaal_speci_welke} onChange={(k, v) => updPersoon(idxActief, k, v)} type="textarea" />}
+                {persoonActief.digitaal_speci_gedaan && <InitialsBox value={persoonActief.digitaal_speci_init} onChange={v => updPersoon(idxActief, "digitaal_speci_init", v)} />}
               </div>
-              <div className="time-block"><div className="time-block-label">Upload Synop WIS 2.0</div>{wisTimesP.length > 0 ? <CheckboxGroup options={wisTimesP} selected={persoonActief.wis_synop_gedaan} onChange={v => updPersoon(idxActief, "wis_synop_gedaan", v)} hint="vink aan welke geüpload" /> : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}</div>
-              <div className="time-block"><div className="time-block-label">Verzenden TAF</div>{tafTimesP.length > 0 ? <CheckboxGroup options={tafTimesP} selected={persoonActief.taf_gedaan} onChange={v => updPersoon(idxActief, "taf_gedaan", v)} hint="vink aan welke verzonden" /> : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}</div>
+              <div className="time-block">
+                <div className="time-block-label">Upload Synop WIS 2.0</div>
+                {wisTimesP.length > 0 ? (
+                  <>
+                    <CheckboxGroup options={wisTimesP} selected={persoonActief.wis_synop_gedaan} onChange={v => updPersoon(idxActief, "wis_synop_gedaan", v)} hint="vink aan welke geüpload" />
+                    <InitialsBox value={persoonActief.wis_synop_init} onChange={v => updPersoon(idxActief, "wis_synop_init", v)} />
+                  </>
+                ) : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}
+              </div>
+              <div className="time-block">
+                <div className="time-block-label">Verzenden TAF</div>
+                {tafTimesP.length > 0 ? (
+                  <>
+                    <CheckboxGroup options={tafTimesP} selected={persoonActief.taf_gedaan} onChange={v => updPersoon(idxActief, "taf_gedaan", v)} hint="vink aan welke verzonden" />
+                    <InitialsBox value={persoonActief.taf_init} onChange={v => updPersoon(idxActief, "taf_init", v)} />
+                  </>
+                ) : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}
+              </div>
               <div className="time-block">
                 <div className="time-block-label">Verzenden RR naar Klima-afdeling</div>
                 {isOchtend ? (
-                  <label className={`cb-item${persoonActief.rr_gedaan ? " checked" : ""}`} style={{ display: "inline-flex" }}>
-                    <input type="checkbox" checked={persoonActief.rr_gedaan} onChange={e => updPersoon(idxActief, "rr_gedaan", e.target.checked)} />Verzonden
-                  </label>
+                  <>
+                    <label className={`cb-item${persoonActief.rr_gedaan ? " checked" : ""}`} style={{ display: "inline-flex" }}>
+                      <input type="checkbox" checked={persoonActief.rr_gedaan} onChange={e => updPersoon(idxActief, "rr_gedaan", e.target.checked)} />Verzonden
+                    </label>
+                    {persoonActief.rr_gedaan && <InitialsBox value={persoonActief.rr_init} onChange={v => updPersoon(idxActief, "rr_init", v)} />}
+                  </>
                 ) : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Alleen van toepassing bij ochtenddienst.</p>}
               </div>
             </>

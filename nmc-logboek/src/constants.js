@@ -74,9 +74,9 @@ export const VERWACHT_PER_SHIFT = {
 
 export const WZ_LABELS = {
   taf: "TAF verzonden",
-  synop: "Synop",
-  metar: "Metar",
-  klima: "Klima waarneming",
+  synop: "Synop-boek",
+  metar: "Metar-AMHS",
+  klima: "Klimawaarneming-boek",
   upload_metar: "Upload Metar website",
   digitaal_wx: "Digitaal WX website",
   digitaal_klima: "Digitaal Klima website",

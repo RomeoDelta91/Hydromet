@@ -71,12 +71,12 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
             <div key={idx} className="ef-block">
               <div className="ef-label">{p.naam || `Persoon ${idx + 1}`}</div>
               <div className="ef-value">
-                {p.synop_gedaan?.length ? `Synop: ${p.synop_gedaan.join(", ")}\n` : ""}
-                {p.metar_gedaan?.length ? `Metar: ${p.metar_gedaan.join(", ")}\n` : ""}
-                {p.klima_gedaan?.length ? `Klima: ${p.klima_gedaan.join(", ")}\n` : ""}
-                {p.taf_gedaan?.length ? `TAF: ${p.taf_gedaan.join(", ")}\n` : ""}
-                {p.digitaal_speci_gedaan ? `SPECI: ${p.digitaal_speci_welke || "Ja"}\n` : ""}
-                {p.rr_gedaan ? "RR naar Klima: Verzonden" : ""}
+                {p.synop_gedaan?.length ? `Synop-boek: ${p.synop_gedaan.join(", ")}${p.synop_init ? ` (${p.synop_init})` : ""}\n` : ""}
+                {p.metar_gedaan?.length ? `Metar-AMHS: ${p.metar_gedaan.join(", ")}${p.metar_init ? ` (${p.metar_init})` : ""}\n` : ""}
+                {p.klima_gedaan?.length ? `Klimawaarneming-boek: ${p.klima_gedaan.join(", ")}${p.klima_init ? ` (${p.klima_init})` : ""}\n` : ""}
+                {p.taf_gedaan?.length ? `TAF: ${p.taf_gedaan.join(", ")}${p.taf_init ? ` (${p.taf_init})` : ""}\n` : ""}
+                {p.digitaal_speci_gedaan ? `SPECI: ${p.digitaal_speci_welke || "Ja"}${p.digitaal_speci_init ? ` (${p.digitaal_speci_init})` : ""}\n` : ""}
+                {p.rr_gedaan ? `RR naar Klima: Verzonden${p.rr_init ? ` (${p.rr_init})` : ""}` : ""}
               </div>
             </div>
           );
