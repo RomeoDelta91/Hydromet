@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { getUsers, createUser, updateUser, deleteUser } from "../api.js";
+import { getUsers, createUser, updateUser, deleteUser, getLoginLogs, downloadLoginLog } from "../api.js";
 
 const ROLES = [
   { id: "forecaster", label: "Forecaster" },
@@ -18,6 +18,9 @@ export default function UserAdmin({ showToast }) {
   const [form, setForm] = useState(DEF_NEW);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [logs, setLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsError, setLogsError] = useState("");
 
   const load = useCallback(() => {
     setLoading(true);
@@ -29,6 +32,25 @@ export default function UserAdmin({ showToast }) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const loadLogs = useCallback(() => {
+    setLogsLoading(true);
+    setLogsError("");
+    getLoginLogs()
+      .then(setLogs)
+      .catch(err => setLogsError(err.message || "Kon login-logboek niet laden."))
+      .finally(() => setLogsLoading(false));
+  }, []);
+
+  useEffect(() => { loadLogs(); }, [loadLogs]);
+
+  const handleDownloadLog = async bestand => {
+    try {
+      await downloadLoginLog(bestand);
+    } catch (err) {
+      setLogsError(err.message || "Downloaden mislukt.");
+    }
+  };
 
   const handleCreate = async () => {
     if (!form.username.trim() || !form.naam.trim() || !form.password) {
@@ -137,6 +159,27 @@ export default function UserAdmin({ showToast }) {
             </div>
           ))}
           {!loading && users.length === 0 && <p style={{ fontSize: 13, color: "var(--inkLo)" }}>Geen gebruikers gevonden.</p>}
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>🔒 Login-logboek (alleen admin)</span></div>
+        <div className="card-body">
+          <p style={{ fontSize: 12, color: "var(--inkLo)", marginBottom: 10 }}>
+            Elke inlogpoging (geslaagd én mislukt) wordt vastgelegd met tijdstip, gebruiker, rol en IP-adres — voor kwaliteits- en fraudecontrole. Eén bestand per maand.
+          </p>
+          {logsError && <p style={{ fontSize: 12, color: "var(--danger)", marginBottom: 8 }}>{logsError}</p>}
+          {logsLoading && <div className="loading-state">Laden…</div>}
+          {!logsLoading && logs.length === 0 && !logsError && <p style={{ fontSize: 13, color: "var(--inkLo)" }}>Nog geen logbestanden.</p>}
+          {!logsLoading && logs.map(l => (
+            <div key={l.bestand} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--paperMid)", padding: "8px 0" }}>
+              <div>
+                <div style={{ fontWeight: 600, fontFamily: "IBM Plex Mono, monospace", fontSize: 13 }}>{l.bestand}</div>
+                <div style={{ fontSize: 11, color: "var(--inkLo)" }}>{l.regels} inlogpoging{l.regels !== 1 ? "en" : ""} — {l.grootte_kb} KB</div>
+              </div>
+              <button className="btn btn-secondary" onClick={() => handleDownloadLog(l.bestand)}>⬇ Download</button>
+            </div>
+          ))}
         </div>
       </div>
     </div>

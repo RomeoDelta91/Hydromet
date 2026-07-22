@@ -239,6 +239,19 @@ add_action('rest_api_init', function() {
         'callback'            => 'nmc_delete_user',
         'permission_callback' => 'nmc_admin_required',
     ]);
+
+    // Login-logboek — uitsluitend voor 'admin', niemand anders (ook chef niet).
+    register_rest_route($ns, '/logs', [
+        'methods'             => 'GET',
+        'callback'            => 'nmc_get_login_logs',
+        'permission_callback' => 'nmc_admin_required',
+    ]);
+
+    register_rest_route($ns, '/logs/(?P<file>[a-zA-Z0-9\-\.]+)', [
+        'methods'             => 'GET',
+        'callback'            => 'nmc_get_login_log_content',
+        'permission_callback' => 'nmc_admin_required',
+    ]);
 });
 
 // ---------------------------------------------------------------------------
@@ -290,6 +303,46 @@ function nmc_log_login($username, $naam, $role, $status) {
         nmc_client_ip()
     );
     file_put_contents($file, $line, FILE_APPEND | LOCK_EX);
+}
+
+// Lijst van beschikbare maand-logbestanden (nieuwste eerst), met bestandsgrootte
+// en aantal regels, zodat de admin niet blind hoeft te downloaden.
+function nmc_get_login_logs() {
+    $dir = nmc_logs_dir();
+    $files = glob($dir . 'login-log-*.txt');
+    if (!$files) return rest_ensure_response([]);
+    rsort($files);
+    $out = array_map(function($path) {
+        $name = basename($path);
+        $lines = 0;
+        $handle = fopen($path, 'r');
+        if ($handle) {
+            while (!feof($handle)) { fgets($handle); $lines++; }
+            fclose($handle);
+        }
+        return [
+            'bestand'    => $name,
+            'grootte_kb' => round(filesize($path) / 1024, 1),
+            'regels'     => max(0, $lines - 1),
+        ];
+    }, $files);
+    return rest_ensure_response($out);
+}
+
+// Geeft de volledige inhoud van één maand-logbestand terug als platte tekst.
+// Bestandsnaam wordt strikt gevalideerd (regex in de route + nogmaals hier)
+// zodat er nooit buiten de logs-map gelezen kan worden.
+function nmc_get_login_log_content(WP_REST_Request $req) {
+    $file = $req->get_param('file');
+    if (!preg_match('/^login-log-\d{4}-\d{2}\.txt$/', $file)) {
+        return new WP_Error('invalid_file', 'Ongeldige bestandsnaam.', ['status' => 400]);
+    }
+    $dir  = nmc_logs_dir();
+    $path = $dir . $file;
+    if (!file_exists($path)) {
+        return new WP_Error('not_found', 'Logbestand niet gevonden.', ['status' => 404]);
+    }
+    return new WP_REST_Response(file_get_contents($path), 200, ['Content-Type' => 'text/plain; charset=utf-8']);
 }
 
 function nmc_login(WP_REST_Request $req) {

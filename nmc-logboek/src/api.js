@@ -129,3 +129,24 @@ export async function deleteUser(id) {
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
+
+export async function getLoginLogs() {
+  const res = await fetch(`${BASE}/logs`, { headers: authHeaders() });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function downloadLoginLog(bestand) {
+  const res = await fetch(`${BASE}/logs/${bestand}`, { headers: authHeaders() });
+  if (!res.ok) throw new Error(await res.text());
+  const text = await res.text();
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = bestand;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
