@@ -6,6 +6,7 @@ import {
 } from "../constants.js";
 import { today, ltToUtcMinutes, utcLabelToMinutes, inRange, inRangeKlima } from "../utils.js";
 import { getEntries } from "../api.js";
+import BarChart from "./ui/BarChart.jsx";
 
 function getPersonalResponsibilityFull(persoon, shift) {
   if (!shift) return null;
@@ -73,6 +74,7 @@ function Bar({ pct, color = "ok" }) {
 export default function AnalysePanel() {
   const [maand, setMaand] = useState(today().slice(0, 7));
   const [subTab, setSubTab] = useState("observer");
+  const [grafiekId, setGrafiekId] = useState("ziekmeldingen");
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -257,6 +259,47 @@ export default function AnalysePanel() {
     return results;
   }
 
+  function calcZiekmeldingen() {
+    const map = {};
+    entries.forEach(e => {
+      (e.ziekmeldingen || []).forEach(z => {
+        const naam = z.naam?.trim() || "Onbekend";
+        map[naam] = (map[naam] || 0) + 1;
+      });
+    });
+    return Object.entries(map).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+  }
+
+  function calcAanvragen() {
+    const map = {};
+    entries.forEach(e => {
+      (e.aanvragen || []).forEach(a => {
+        const t = a.type || "Onbekend";
+        map[t] = (map[t] || 0) + 1;
+      });
+    });
+    return Object.entries(map).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+  }
+
+  const GRAFIEK_OPTS = [
+    { id: "ziekmeldingen", label: "Ziektemeldingen (per persoon)" },
+    { id: "aanvragen", label: "Aanvragen (per type)" },
+    { id: "wz_volledigheid", label: "Werkzaamheden – volledigheid per onderdeel (%)" },
+    { id: "storingen_obs", label: "Storingen – Observers (per systeem)" },
+    { id: "storingen_f", label: "Storingen – Forecasters (per systeem)" },
+  ];
+
+  function grafiekData(id) {
+    switch (id) {
+      case "ziekmeldingen": return { data: calcZiekmeldingen(), color: "var(--warn)", max: undefined, unit: "" };
+      case "aanvragen": return { data: calcAanvragen(), color: "var(--navyMid)", max: undefined, unit: "" };
+      case "wz_volledigheid": return { data: wzStats.map(r => ({ label: r.label, value: r.pct })), color: "var(--green)", max: 100, unit: "%" };
+      case "storingen_obs": return { data: storingenObs.map(r => ({ label: r.label, value: r.totaal })), color: "var(--danger)", max: undefined, unit: "" };
+      case "storingen_f": return { data: storingenF.map(r => ({ label: r.label, value: r.totaal })), color: "var(--danger)", max: undefined, unit: "" };
+      default: return { data: [], color: "var(--green)", max: undefined, unit: "" };
+    }
+  }
+
   const wzStats = calcWzStats();
   const perPersoon = calcPerPersoon();
   const perShift = calcPerShift();
@@ -286,7 +329,7 @@ export default function AnalysePanel() {
       {!loading && (
         <>
           <div className="analyse-tabs">
-            {[["observer", "👁 Observers"], ["perpersoon", "👤 Per Persoon"], ["forecaster", "🌤 Forecasters"], ["storingen", "⚠ Storingen"]].map(([id, label]) => (
+            {[["observer", "👁 Observers"], ["perpersoon", "👤 Per Persoon"], ["forecaster", "🌤 Forecasters"], ["storingen", "⚠ Storingen"], ["grafieken", "📈 Grafieken"]].map(([id, label]) => (
               <button key={id} className={`a-tab${subTab === id ? " active" : ""}`} onClick={() => setSubTab(id)}>{label}</button>
             ))}
           </div>
@@ -558,6 +601,23 @@ export default function AnalysePanel() {
                 </div>
               </div>
             </>
+          )}
+
+          {subTab === "grafieken" && (
+            <div className="a-card">
+              <div className="a-card-head">
+                <span>📈 Grafiek per element</span>
+              </div>
+              <div className="a-card-body">
+                <div className="month-sel" style={{ marginBottom: 14 }}>
+                  <label>Element</label>
+                  <select value={grafiekId} onChange={e => setGrafiekId(e.target.value)}>
+                    {GRAFIEK_OPTS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+                  </select>
+                </div>
+                <BarChart {...grafiekData(grafiekId)} />
+              </div>
+            </div>
           )}
         </>
       )}

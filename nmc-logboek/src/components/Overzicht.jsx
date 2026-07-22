@@ -191,7 +191,7 @@ export default function Overzicht({ canDelete, canEdit = true, showToast }) {
 
         <div style={{ marginTop: 14, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <button className="btn btn-export" onClick={() => exportDocx(visibleEntries, selectedIds, periodeNaam())}>⬇ Download Word (.docx)</button>
-          <button className="btn btn-export" onClick={() => exportXlsx(visibleEntries, periodeNaam())}>⬇ Download Excel (.xlsx)</button>
+          <button className="btn btn-export" onClick={() => exportXlsx(visibleEntries, periodeNaam(), selectedIds)}>⬇ Download Excel (.xlsx)</button>
           <span style={{ fontSize: 12, color: "var(--inkLo)" }}>{visibleEntries.length} inzending{visibleEntries.length !== 1 ? "en" : ""} geselecteerd</span>
         </div>
       </div>

@@ -12,10 +12,11 @@ function cell(text, { bold = false, color, width } = {}) {
   });
 }
 
+// `rows` is een array van al gebouwde TableRow-objecten (bijv. via kv()).
 function table(rows) {
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: rows.map(r => new TableRow({ children: r })),
+    rows,
   });
 }
 
@@ -60,8 +61,13 @@ function basisgegevensSection(e) {
 function administratieWerkSection(e) {
   const per = e.werkzaamheden_per_uur || {};
   const rows = Object.entries(per).filter(([, v]) => v).map(([uur, v]) => kv(uur, v));
-  if (!rows.length) return [];
-  return [heading("Werkzaamheden per uur", HeadingLevel.HEADING_3), table(rows)];
+  const blocks = [];
+  if (rows.length) blocks.push(heading("Werkzaamheden per uur", HeadingLevel.HEADING_3), table(rows));
+  if (e.onderhoud_notities) {
+    blocks.push(new Paragraph({ text: "Onderhoud", heading: HeadingLevel.HEADING_4 }));
+    blocks.push(new Paragraph({ text: e.onderhoud_notities }));
+  }
+  return blocks;
 }
 
 function communicatieSection(e, commLabels) {

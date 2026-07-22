@@ -10,6 +10,7 @@ const DEF_ADMIN = {
   administratie: [""],
   onderhoud: [""],
   werkzaamheden_per_uur: Object.fromEntries(ADMIN_UREN.map(u => [u, ""])),
+  onderhoud_notities: "",
   byz_algemeen: "",
 };
 
@@ -84,6 +85,11 @@ export default function AdministratieForm({ onSave, gebruiker, initial }) {
             <Field key={uur} label={`${uur} — Verrichte werkzaamheden`} field={uur} val={f.werkzaamheden_per_uur[uur]} onChange={(_, v) => updUur(uur, v)} type="textarea" />
           ))}
         </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>🔧 Onderhoud</span></div>
+        <div className="card-body"><div className="field-grid single"><Field label="" field="onderhoud_notities" val={f.onderhoud_notities} onChange={upd} type="textarea" /></div></div>
       </div>
 
       <div className="card">

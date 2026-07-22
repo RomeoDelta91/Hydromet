@@ -63,6 +63,7 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
             {werkPerUur.map(([uur, v]) => `${uur}: ${v}`).join("\n")}
           </div></div>
         )}
+        {isAdmin && ef("Onderhoud", e.onderhoud_notities)}
         {isO && (e.personen || []).map((p, idx) => {
           const heeftWz = (p.synop_gedaan?.length || p.metar_gedaan?.length || p.klima_gedaan?.length || p.taf_gedaan?.length || p.digitaal_speci_gedaan || p.rr_gedaan);
           if (!heeftWz) return null;
