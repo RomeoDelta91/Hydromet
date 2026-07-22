@@ -46,6 +46,9 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 .cb-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink);background:var(--paper);border:1px solid var(--paperMid);border-radius:6px;padding:4px 10px;cursor:pointer;user-select:none;}
 .cb-item.checked{background:rgba(0,200,150,.12);border-color:var(--green);}
 .cb-item input{width:14px;height:14px;accent-color:var(--green);cursor:pointer;}
+.cb-row-init{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
+.cb-init-item{display:flex;flex-direction:column;align-items:center;gap:5px;}
+.cb-init-input{width:42px;text-align:center;text-transform:uppercase;border:1px solid var(--paperMid);border-radius:6px;padding:4px 2px;font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--ink);background:var(--white);}
 .time-block{background:var(--paper);border-radius:8px;padding:10px 12px;margin-bottom:8px;}
 .time-block-label{font-size:11px;font-weight:700;color:var(--navyMid);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;}
 .initials-field{display:inline-flex;align-items:center;gap:6px;margin-top:8px;}

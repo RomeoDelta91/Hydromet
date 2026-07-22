@@ -42,7 +42,7 @@ const fmtAanvr = arr => (arr || []).map(a => [a.type, a.naam, a.periode].filter(
 
 function werkzaamhedenVoor(e, persoon) {
   if (e.type === "observer" && persoon) {
-    const withInit = (arr, init) => (arr || []).join(", ") + (init ? ` (${init})` : "");
+    const withInit = (arr, initMap) => (arr || []).map(t => `${t}${initMap?.[t] ? ` (${initMap[t]})` : ""}`).join(", ");
     return [
       `Synop-boek: ${withInit(persoon.synop_gedaan, persoon.synop_init) || "-"}`,
       `Metar-AMHS: ${withInit(persoon.metar_gedaan, persoon.metar_init) || "-"}`,

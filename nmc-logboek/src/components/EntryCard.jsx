@@ -22,6 +22,9 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
   const onderhoudNamen = (e.onderhoud || []).filter(Boolean).join(", ");
   const werkPerUur = Object.entries(e.werkzaamheden_per_uur || {}).filter(([, v]) => v);
 
+  // Toont elk tijdstip met de bijbehorende initialen: "12 UTC (AB), 13 UTC (CD)".
+  const fmtSlots = (arr, initMap) => (arr || []).map(t => `${t}${initMap?.[t] ? ` (${initMap[t]})` : ""}`).join(", ");
+
   const ef = (label, val) => {
     if (!val || val === "" || val === "OK" || (Array.isArray(val) && val.length === 0)) return null;
     return (<div className="ef-block"><div className="ef-label">{label}</div><div className="ef-value">{Array.isArray(val) ? val.join(", ") : val}</div></div>);
@@ -71,10 +74,10 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
             <div key={idx} className="ef-block">
               <div className="ef-label">{p.naam || `Persoon ${idx + 1}`}</div>
               <div className="ef-value">
-                {p.synop_gedaan?.length ? `Synop-boek: ${p.synop_gedaan.join(", ")}${p.synop_init ? ` (${p.synop_init})` : ""}\n` : ""}
-                {p.metar_gedaan?.length ? `Metar-AMHS: ${p.metar_gedaan.join(", ")}${p.metar_init ? ` (${p.metar_init})` : ""}\n` : ""}
-                {p.klima_gedaan?.length ? `Klimawaarneming-boek: ${p.klima_gedaan.join(", ")}${p.klima_init ? ` (${p.klima_init})` : ""}\n` : ""}
-                {p.taf_gedaan?.length ? `TAF: ${p.taf_gedaan.join(", ")}${p.taf_init ? ` (${p.taf_init})` : ""}\n` : ""}
+                {p.synop_gedaan?.length ? `Synop-boek: ${fmtSlots(p.synop_gedaan, p.synop_init)}\n` : ""}
+                {p.metar_gedaan?.length ? `Metar-AMHS: ${fmtSlots(p.metar_gedaan, p.metar_init)}\n` : ""}
+                {p.klima_gedaan?.length ? `Klimawaarneming-boek: ${fmtSlots(p.klima_gedaan, p.klima_init)}\n` : ""}
+                {p.taf_gedaan?.length ? `TAF: ${fmtSlots(p.taf_gedaan, p.taf_init)}\n` : ""}
                 {p.digitaal_speci_gedaan ? `SPECI: ${p.digitaal_speci_welke || "Ja"}${p.digitaal_speci_init ? ` (${p.digitaal_speci_init})` : ""}\n` : ""}
                 {p.rr_gedaan ? `RR naar Klima: Verzonden${p.rr_init ? ` (${p.rr_init})` : ""}` : ""}
               </div>

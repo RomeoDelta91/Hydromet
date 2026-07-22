@@ -83,7 +83,8 @@ function werkzaamhedenSection(e) {
   const blocks = [heading("Werkzaamheden per persoon", HeadingLevel.HEADING_3)];
   (e.personen || []).forEach((p, idx) => {
     blocks.push(new Paragraph({ text: p.naam || `Persoon ${idx + 1}`, heading: HeadingLevel.HEADING_4 }));
-    const withInit = (arr, init) => ((arr || []).join(", ") || "-") + (init ? ` (${init})` : "");
+    // Elk tijdstip met de bijbehorende initialen: "12 UTC (AB), 13 UTC (CD)".
+    const withInit = (arr, initMap) => (arr || []).map(t => `${t}${initMap?.[t] ? ` (${initMap[t]})` : ""}`).join(", ") || "-";
     const rows = [
       kv("Werktijd", `${p.werktijd_van || "?"} - ${p.werktijd_tot || "?"}`),
       kv("Synop-boek", withInit(p.synop_gedaan, p.synop_init)),
