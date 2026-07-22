@@ -68,13 +68,14 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
         )}
         {isAdmin && ef("Onderhoud", e.onderhoud_notities)}
         {isO && (e.personen || []).map((p, idx) => {
-          const heeftWz = (p.synop_gedaan?.length || p.metar_gedaan?.length || p.klima_gedaan?.length || p.taf_gedaan?.length || p.digitaal_speci_gedaan || p.rr_gedaan);
+          const heeftWz = (p.synop_gedaan?.length || p.synop_amhs_gedaan?.length || p.metar_gedaan?.length || p.klima_gedaan?.length || p.taf_gedaan?.length || p.digitaal_speci_gedaan || p.rr_gedaan);
           if (!heeftWz) return null;
           return (
             <div key={idx} className="ef-block">
               <div className="ef-label">{p.naam || `Persoon ${idx + 1}`}</div>
               <div className="ef-value">
                 {p.synop_gedaan?.length ? `Synop-boek: ${fmtSlots(p.synop_gedaan, p.synop_init)}\n` : ""}
+                {p.synop_amhs_gedaan?.length ? `Synop-AMHS: ${fmtSlots(p.synop_amhs_gedaan, p.synop_amhs_init)}\n` : ""}
                 {p.metar_gedaan?.length ? `Metar-AMHS: ${fmtSlots(p.metar_gedaan, p.metar_init)}\n` : ""}
                 {p.klima_gedaan?.length ? `Klimawaarneming-boek: ${fmtSlots(p.klima_gedaan, p.klima_init)}\n` : ""}
                 {p.taf_gedaan?.length ? `TAF: ${fmtSlots(p.taf_gedaan, p.taf_init)}\n` : ""}

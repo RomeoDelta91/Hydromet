@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SHIFTS, MONTHS_NL, WZ_OPTS, SYNOP_TIMES, KLIMA_SHIFT, WIS_TIMES, TAF_TIMES, MAAIWERK_OPTS } from "../constants.js";
+import { SHIFTS, MONTHS_NL, WZ_OPTS, SYNOP_TIMES, SYNOP_AMHS_TIMES, KLIMA_SHIFT, WIS_TIMES, TAF_TIMES, MAAIWERK_OPTS } from "../constants.js";
 import { today, nowId, filterTijdenVoorPersoon } from "../utils.js";
 import { checkDuplicate } from "../api.js";
 import Field from "./ui/Field.jsx";
@@ -16,6 +16,8 @@ export const DEF_PERSOON = {
   naam: "",
   synop_gedaan: [],
   synop_init: {},
+  synop_amhs_gedaan: [],
+  synop_amhs_init: {},
   metar_gedaan: [],
   metar_init: {},
   klima_gedaan: [],
@@ -81,7 +83,7 @@ const DEF_O_SHIFT = {
 // onderhoud zijn verhuisd naar de aparte Administratie-tab; oudere entries
 // die deze velden nog hebben blijven ongemoeid (worden niet meer getoond,
 // maar gaan niet verloren bij het opslaan van een bewerking).
-const INIT_KEYS = ["synop_init", "metar_init", "klima_init", "taf_init", "wis_synop_init", "upload_metar_init", "digitaal_wx_init", "digitaal_klima_init"];
+const INIT_KEYS = ["synop_init", "synop_amhs_init", "metar_init", "klima_init", "taf_init", "wis_synop_init", "upload_metar_init", "digitaal_wx_init", "digitaal_klima_init"];
 
 function normalizeInitial(initial) {
   const merged = initial ? { ...DEF_O_SHIFT, ...initial } : { ...DEF_O_SHIFT, datum: today() };
@@ -137,6 +139,7 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
 
   const shift = f.shift;
   const synopTimes = shift && SYNOP_TIMES[shift] ? SYNOP_TIMES[shift] : [];
+  const synopAmhsTimes = shift && SYNOP_AMHS_TIMES[shift] ? SYNOP_AMHS_TIMES[shift] : [];
   const klimaTimes = shift && KLIMA_SHIFT[shift] ? KLIMA_SHIFT[shift] : [];
   const wisTimes = shift && WIS_TIMES[shift] ? WIS_TIMES[shift] : [];
   const tafTimes = shift && TAF_TIMES[shift] ? TAF_TIMES[shift] : [];
@@ -196,6 +199,7 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
   const persoonActief = f.personen[activePersoonTab] || f.personen[0];
   const idxActief = f.personen.indexOf(persoonActief);
   const synopTimesP = filterTijdenVoorPersoon(synopTimes, persoonActief.werktijd_van, persoonActief.werktijd_tot);
+  const synopAmhsTimesP = filterTijdenVoorPersoon(synopAmhsTimes, persoonActief.werktijd_van, persoonActief.werktijd_tot);
   const klimaTimesP = filterTijdenVoorPersoon(klimaTimes, persoonActief.werktijd_van, persoonActief.werktijd_tot);
   const wisTimesP = filterTijdenVoorPersoon(wisTimes, persoonActief.werktijd_van, persoonActief.werktijd_tot);
   const tafTimesP = filterTijdenVoorPersoon(tafTimes, persoonActief.werktijd_van, persoonActief.werktijd_tot);
@@ -293,6 +297,16 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
                   <CheckboxGroupInit
                     options={synopTimesP} selected={persoonActief.metar_gedaan} onChangeSelected={v => updPersoon(idxActief, "metar_gedaan", v)}
                     initials={persoonActief.metar_init} onChangeInitials={v => updPersoon(idxActief, "metar_init", v)}
+                    hint="vink aan welke gemaakt, initialen eronder"
+                  />
+                ) : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}
+              </div>
+              <div className="time-block">
+                <div className="time-block-label">Synop-AMHS</div>
+                {synopAmhsTimesP.length > 0 ? (
+                  <CheckboxGroupInit
+                    options={synopAmhsTimesP} selected={persoonActief.synop_amhs_gedaan} onChangeSelected={v => updPersoon(idxActief, "synop_amhs_gedaan", v)}
+                    initials={persoonActief.synop_amhs_init} onChangeInitials={v => updPersoon(idxActief, "synop_amhs_init", v)}
                     hint="vink aan welke gemaakt, initialen eronder"
                   />
                 ) : <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen taken in dit tijdvenster.</p>}

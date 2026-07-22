@@ -18,10 +18,21 @@ export const MONTHS_NL = [
   "Juli", "Augustus", "September", "Oktober", "November", "December",
 ];
 
+// Nachtdienst loopt tot 08:00 LT (11 UTC) — 12 UTC hoort niet meer bij deze
+// shift en is overal verwijderd (Synop-boek, Metar-AMHS, Upload Metar website,
+// Digitale invoer WX website delen deze tijden allemaal).
 export const SYNOP_TIMES = {
   "Ochtenddienst (08:00–15:00 LT)": ["12 UTC", "13 UTC", "14 UTC", "15 UTC", "16 UTC", "17 UTC", "18 UTC"],
   "Middagdienst (15:00–22:00 LT)": ["19 UTC", "20 UTC", "21 UTC", "22 UTC", "23 UTC", "00 UTC", "01 UTC"],
-  "Nachtdienst (22:00–08:00 LT)": ["02 UTC", "03 UTC", "04 UTC", "05 UTC", "06 UTC", "07 UTC", "08 UTC", "09 UTC", "10 UTC", "11 UTC", "12 UTC"],
+  "Nachtdienst (22:00–08:00 LT)": ["02 UTC", "03 UTC", "04 UTC", "05 UTC", "06 UTC", "07 UTC", "08 UTC", "09 UTC", "10 UTC", "11 UTC"],
+};
+
+// Synop-AMHS: eigen, beperktere set synop-tijden per shift (los van het
+// volledige Synop-boek hierboven).
+export const SYNOP_AMHS_TIMES = {
+  "Ochtenddienst (08:00–15:00 LT)": ["12 UTC", "15 UTC", "18 UTC"],
+  "Middagdienst (15:00–22:00 LT)": ["21 UTC", "00 UTC"],
+  "Nachtdienst (22:00–08:00 LT)": ["03 UTC", "06 UTC", "09 UTC"],
 };
 
 export const KLIMA_SHIFT = {
@@ -30,10 +41,11 @@ export const KLIMA_SHIFT = {
   "Nachtdienst (22:00–08:00 LT)": [],
 };
 
+// WIS 2.0 Synop-upload is nu uurlijks, gelijk aan de volledige Synop-boek-tijden.
 export const WIS_TIMES = {
-  "Ochtenddienst (08:00–15:00 LT)": ["12 UTC", "15 UTC", "18 UTC"],
-  "Middagdienst (15:00–22:00 LT)": ["21 UTC", "00 UTC"],
-  "Nachtdienst (22:00–08:00 LT)": ["03 UTC", "06 UTC", "09 UTC"],
+  "Ochtenddienst (08:00–15:00 LT)": ["12 UTC", "13 UTC", "14 UTC", "15 UTC", "16 UTC", "17 UTC", "18 UTC"],
+  "Middagdienst (15:00–22:00 LT)": ["19 UTC", "20 UTC", "21 UTC", "22 UTC", "23 UTC", "00 UTC", "01 UTC"],
+  "Nachtdienst (22:00–08:00 LT)": ["02 UTC", "03 UTC", "04 UTC", "05 UTC", "06 UTC", "07 UTC", "08 UTC", "09 UTC", "10 UTC", "11 UTC"],
 };
 
 export const TAF_TIMES = {
@@ -67,14 +79,15 @@ export const ADMIN_UREN = [
 ];
 
 export const VERWACHT_PER_SHIFT = {
-  "Ochtenddienst (08:00–15:00 LT)": { synop: 7, metar: 7, klima: 2, upload_metar: 7, digitaal_wx: 7, digitaal_klima: 2, wis: 3, rr: 1, taf: 2 },
-  "Middagdienst (15:00–22:00 LT)": { synop: 7, metar: 7, klima: 2, upload_metar: 7, digitaal_wx: 7, digitaal_klima: 2, wis: 2, rr: 0, taf: 2 },
-  "Nachtdienst (22:00–08:00 LT)": { synop: 11, metar: 11, klima: 0, upload_metar: 11, digitaal_wx: 11, digitaal_klima: 0, wis: 3, rr: 0, taf: 3 },
+  "Ochtenddienst (08:00–15:00 LT)": { synop: 7, synop_amhs: 3, metar: 7, klima: 2, upload_metar: 7, digitaal_wx: 7, digitaal_klima: 2, wis: 7, rr: 1, taf: 2 },
+  "Middagdienst (15:00–22:00 LT)": { synop: 7, synop_amhs: 2, metar: 7, klima: 2, upload_metar: 7, digitaal_wx: 7, digitaal_klima: 2, wis: 7, rr: 0, taf: 2 },
+  "Nachtdienst (22:00–08:00 LT)": { synop: 10, synop_amhs: 3, metar: 10, klima: 0, upload_metar: 10, digitaal_wx: 10, digitaal_klima: 0, wis: 10, rr: 0, taf: 3 },
 };
 
 export const WZ_LABELS = {
   taf: "TAF verzonden",
   synop: "Synop-boek",
+  synop_amhs: "Synop-AMHS",
   metar: "Metar-AMHS",
   klima: "Klimawaarneming-boek",
   upload_metar: "Upload Metar website",

@@ -88,6 +88,7 @@ function werkzaamhedenSection(e) {
     const rows = [
       kv("Werktijd", `${p.werktijd_van || "?"} - ${p.werktijd_tot || "?"}`),
       kv("Synop-boek", withInit(p.synop_gedaan, p.synop_init)),
+      kv("Synop-AMHS", withInit(p.synop_amhs_gedaan, p.synop_amhs_init)),
       kv("Metar-AMHS", withInit(p.metar_gedaan, p.metar_init)),
       kv("Klimawaarneming-boek", withInit(p.klima_gedaan, p.klima_init)),
       kv("TAF", withInit(p.taf_gedaan, p.taf_init)),

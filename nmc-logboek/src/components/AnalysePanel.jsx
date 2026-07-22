@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   WZ_LABELS, VERWACHT_PER_SHIFT, STATUS_KEYS_COMM_OBS, STATUS_KEYS_INST_OBS,
   STATUS_KEYS_COMM_F, STATUS_KEYS_INST_F, SYSTEM_LABELS,
-  SYNOP_TIMES, KLIMA_SHIFT, WIS_TIMES, TAF_TIMES,
+  SYNOP_TIMES, SYNOP_AMHS_TIMES, KLIMA_SHIFT, WIS_TIMES, TAF_TIMES,
 } from "../constants.js";
 import { today, ltToUtcMinutes, utcLabelToMinutes, inRange, inRangeKlima } from "../utils.js";
 import { getEntries } from "../api.js";
@@ -16,6 +16,7 @@ function getPersonalResponsibilityFull(persoon, shift) {
   const totMin = ltToUtcMinutes(persoon.werktijd_tot);
 
   const synopTimes = SYNOP_TIMES[shift] || [];
+  const synopAmhsTimes = SYNOP_AMHS_TIMES[shift] || [];
   const klimaTimes = KLIMA_SHIFT[shift] || [];
   const wisTimes = WIS_TIMES[shift] || [];
   const tafTimes = TAF_TIMES[shift] || [];
@@ -24,6 +25,7 @@ function getPersonalResponsibilityFull(persoon, shift) {
   const filterKlima = times => times.filter(t => inRangeKlima(t, vanMin, totMin));
 
   const resp_synop = filterUtc(synopTimes);
+  const resp_synop_amhs = filterUtc(synopAmhsTimes);
   const resp_metar = filterUtc(synopTimes);
   const resp_upload_metar = filterUtc(synopTimes);
   const resp_digitaal_wx = filterUtc(synopTimes);
@@ -34,6 +36,7 @@ function getPersonalResponsibilityFull(persoon, shift) {
   const resp_rr = (shift === "Ochtenddienst (08:00–15:00 LT)" && inRange(11 * 60, vanMin, totMin)) ? ["11:00 UTC"] : [];
 
   const done_synop = persoon.synop_gedaan || [];
+  const done_synop_amhs = persoon.synop_amhs_gedaan || [];
   const done_metar = persoon.metar_gedaan || [];
   const done_upload_metar = persoon.upload_metar_gedaan || [];
   const done_digitaal_wx = persoon.digitaal_wx_gedaan || [];
@@ -50,6 +53,7 @@ function getPersonalResponsibilityFull(persoon, shift) {
     hasWindow: !!(persoon.werktijd_van && persoon.werktijd_tot),
     sections: [
       { key: "synop", label: "Synop-boek", verantw: resp_synop, gemist: miss(resp_synop, done_synop) },
+      { key: "synop_amhs", label: "Synop-AMHS", verantw: resp_synop_amhs, gemist: miss(resp_synop_amhs, done_synop_amhs) },
       { key: "metar", label: "Metar-AMHS", verantw: resp_metar, gemist: miss(resp_metar, done_metar) },
       { key: "upload_metar", label: "Upload Metar", verantw: resp_upload_metar, gemist: miss(resp_upload_metar, done_upload_metar) },
       { key: "digitaal_wx", label: "Digitaal WX", verantw: resp_digitaal_wx, gemist: miss(resp_digitaal_wx, done_digitaal_wx) },
@@ -112,7 +116,7 @@ export default function AnalysePanel() {
           return;
         }
         const fieldMap = {
-          synop: "synop_gedaan", metar: "metar_gedaan", klima: "klima_gedaan",
+          synop: "synop_gedaan", synop_amhs: "synop_amhs_gedaan", metar: "metar_gedaan", klima: "klima_gedaan",
           upload_metar: "upload_metar_gedaan", digitaal_wx: "digitaal_wx_gedaan",
           digitaal_klima: "digitaal_klima_gedaan", wis: "wis_synop_gedaan", taf: "taf_gedaan",
         };
@@ -138,6 +142,7 @@ export default function AnalysePanel() {
         if (!v) return;
         let missed = 0;
         if ((p.synop_gedaan || []).length < v.synop) missed++;
+        if ((p.synop_amhs_gedaan || []).length < v.synop_amhs) missed++;
         if ((p.metar_gedaan || []).length < v.metar) missed++;
         if (v.klima > 0 && (p.klima_gedaan || []).length < v.klima) missed++;
         if ((p.upload_metar_gedaan || []).length < v.upload_metar) missed++;
@@ -162,6 +167,7 @@ export default function AnalysePanel() {
       let m = 0;
       (e.personen || []).forEach(p => {
         if ((p.synop_gedaan || []).length < v.synop) m++;
+        if ((p.synop_amhs_gedaan || []).length < v.synop_amhs) m++;
         if ((p.metar_gedaan || []).length < v.metar) m++;
         if (v.klima > 0 && (p.klima_gedaan || []).length < v.klima) m++;
         if ((p.upload_metar_gedaan || []).length < v.upload_metar) m++;

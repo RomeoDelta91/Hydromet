@@ -45,6 +45,7 @@ function werkzaamhedenVoor(e, persoon) {
     const withInit = (arr, initMap) => (arr || []).map(t => `${t}${initMap?.[t] ? ` (${initMap[t]})` : ""}`).join(", ");
     return [
       `Synop-boek: ${withInit(persoon.synop_gedaan, persoon.synop_init) || "-"}`,
+      `Synop-AMHS: ${withInit(persoon.synop_amhs_gedaan, persoon.synop_amhs_init) || "-"}`,
       `Metar-AMHS: ${withInit(persoon.metar_gedaan, persoon.metar_init) || "-"}`,
       `Klimawaarneming-boek: ${withInit(persoon.klima_gedaan, persoon.klima_init) || "-"}`,
       `TAF: ${withInit(persoon.taf_gedaan, persoon.taf_init) || "-"}`,
