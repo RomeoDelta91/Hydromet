@@ -7,6 +7,7 @@ const COLUMN_DEFS = [
   { id: null, key: "shift", label: "Shift" },
   { id: null, key: "type", label: "Type" },
   { id: null, key: "naam", label: "Naam" },
+  { id: null, key: "onderhoud_namen", label: "Onderhoudmedewerker" },
   { id: "com_telefoon", key: "com_telefoon", label: "Telefoon" },
   { id: "com_internet", key: "com_internet", label: "Internet" },
   { id: "com_amhs", key: "com_amhs", label: "AMHS" },
@@ -28,6 +29,7 @@ const COLUMN_DEFS = [
   { id: "byz_stroom", key: "byz_stroom", label: "Stroomonderbrekingen" },
   { id: "byz_swm", key: "byz_swm", label: "Levering SWM water" },
   { id: "byz_maaiwerkzaamheden", key: "byz_maaiwerkzaamheden", label: "Maaiwerkzaamheden" },
+  { id: "byz_toilet", key: "byz_toilet", label: "Toilet" },
   { id: "byz_airlines", key: "byz_airlines", label: "Airlines" },
   { id: "byz_operations", key: "byz_operations", label: "Operations" },
   { id: "byz_atc", key: "byz_atc", label: "ATC" },
@@ -54,6 +56,7 @@ function werkzaamhedenVoor(e, persoon) {
     ].filter(Boolean).join(" | ");
   }
   if (e.type === "administratie") {
+    if (typeof e.werkzaamheden === "string" && e.werkzaamheden) return e.werkzaamheden;
     return Object.entries(e.werkzaamheden_per_uur || {})
       .filter(([, v]) => v)
       .map(([uur, v]) => `${uur}: ${v}`)
@@ -86,9 +89,11 @@ function rowsForEntry(e) {
     webupload: webUploadVoor(e), notams: notamsVoor(e),
     byz_dienstauto: e.byz_dienstauto ?? "", byz_dienstbus: e.byz_dienstbus ?? "", byz_hydrofoor: e.byz_hydrofoor ?? "",
     byz_stroom: e.byz_stroom ?? "", byz_swm: e.byz_swm ?? "", byz_maaiwerkzaamheden: e.byz_maaiwerkzaamheden ?? "",
+    byz_toilet: e.byz_toilet ?? "",
     byz_airlines: e.byz_airlines ?? "", byz_operations: e.byz_operations ?? "", byz_atc: e.byz_atc ?? "", byz_toren: e.byz_toren ?? "",
     ziekmeldingen: fmtZiek(e.ziekmeldingen), aanvragen: fmtAanvr(e.aanvragen),
     onderhoud_notities: e.onderhoud_notities ?? "",
+    onderhoud_namen: e.type === "administratie" ? "" : (e.onderhoud || []).filter(Boolean).join(", "),
     byz_algemeen: e.byz_algemeen ?? "",
   };
 
@@ -97,8 +102,9 @@ function rowsForEntry(e) {
     return [{ datum: e.datum, naam, werkzaamheden: "", ...base }];
   }
   if (e.type === "administratie") {
-    const naam = [...(e.administratie || []), ...(e.onderhoud || [])].filter(Boolean).join(", ");
-    return [{ datum: e.datum, naam, werkzaamheden: werkzaamhedenVoor(e), ...base }];
+    const naam = (e.administratie || []).filter(Boolean).join(", ");
+    const onderhoud_namen = (e.onderhoud || []).filter(Boolean).join(", ");
+    return [{ ...base, datum: e.datum, naam, onderhoud_namen, werkzaamheden: werkzaamhedenVoor(e) }];
   }
   const personen = e.personen?.length ? e.personen : [{}];
   return personen.map(p => ({ datum: e.datum, naam: p.naam || "", werkzaamheden: werkzaamhedenVoor(e, p), ...base }));

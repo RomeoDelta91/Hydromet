@@ -46,9 +46,11 @@ function basisgegevensSection(e) {
   if (!isAdmin) rows.push(kv("Shift", e.shift));
   if (isAdmin) {
     rows.push(kv("Administratie", (e.administratie || []).filter(Boolean).join(", ") || "-"));
-    rows.push(kv("Onderhoudmedewerker", (e.onderhoud || []).filter(Boolean).join(", ") || "-"));
   } else {
     rows.push(kv(isF ? "Meteoroloog" : "Adjunct-meteorologen", isF ? (personenNamen || e.meteoroloog || "") : personenNamen));
+  }
+  if ((isAdmin || e.type === "observer") && (e.onderhoud || []).filter(Boolean).length) {
+    rows.push(kv("Onderhoudmedewerker", e.onderhoud.filter(Boolean).join(", ")));
   }
   if (isF) {
     if ((e.verwachtingen_checks || []).length) rows.push(kv("Verwachtingen uitgebracht", e.verwachtingen_checks.join(", ")));
@@ -59,10 +61,16 @@ function basisgegevensSection(e) {
 }
 
 function administratieWerkSection(e) {
-  const per = e.werkzaamheden_per_uur || {};
-  const rows = Object.entries(per).filter(([, v]) => v).map(([uur, v]) => kv(uur, v));
   const blocks = [];
-  if (rows.length) blocks.push(heading("Werkzaamheden per uur", HeadingLevel.HEADING_3), table(rows));
+  // Oudere entries hadden werkzaamheden als per-uur object; toon die nog als
+  // er geen `werkzaamheden`-tekstveld is (nieuw formaat).
+  const tekst = typeof e.werkzaamheden === "string" && e.werkzaamheden
+    ? e.werkzaamheden
+    : Object.entries(e.werkzaamheden_per_uur || {}).filter(([, v]) => v).map(([uur, v]) => `${uur}: ${v}`).join("\n");
+  if (tekst) {
+    blocks.push(new Paragraph({ text: "Werkzaamheden", heading: HeadingLevel.HEADING_3 }));
+    blocks.push(new Paragraph({ text: tekst }));
+  }
   if (e.onderhoud_notities) {
     blocks.push(new Paragraph({ text: "Onderhoud", heading: HeadingLevel.HEADING_4 }));
     blocks.push(new Paragraph({ text: e.onderhoud_notities }));
@@ -120,6 +128,7 @@ function bijzonderhedenSection(e, ids) {
   const fields = [
     ["byz_dienstauto", "Dienstauto"], ["byz_dienstbus", "Dienstbus"], ["byz_hydrofoor", "Hydrofoor"],
     ["byz_stroom", "Stroomonderbrekingen"], ["byz_swm", "Levering SWM water"], ["byz_maaiwerkzaamheden", "Maaiwerkzaamheden"],
+    ["byz_toilet", "Toilet"],
     ["byz_airlines", "Airlines"], ["byz_operations", "Operations"], ["byz_atc", "ATC"], ["byz_toren", "Toren"],
   ];
   const rows = fields.filter(([k]) => has(k) && e[k]).map(([k, l]) => kv(l, e[k]));

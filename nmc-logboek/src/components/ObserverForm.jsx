@@ -44,6 +44,7 @@ const DEF_O_SHIFT = {
   shift: "",
   personen: [{ ...DEF_PERSOON }],
   security: [""],
+  onderhoud: [""],
   com_telefoon: "OK",
   com_internet: "OK",
   com_amhs: "OK",
@@ -69,6 +70,7 @@ const DEF_O_SHIFT = {
   byz_stroom: "",
   byz_swm: "",
   byz_maaiwerkzaamheden: "",
+  byz_toilet: "",
   ziekmeldingen: [],
   aanvragen: [],
   byz_airlines: "",
@@ -78,16 +80,14 @@ const DEF_O_SHIFT = {
   byz_algemeen: "",
 };
 
-// Oudere entries hadden security als los tekstveld en geen ziekmeldingen/
-// aanvragen. Normaliseer die naar de nieuwe (array-)vorm. Administratie en
-// onderhoud zijn verhuisd naar de aparte Administratie-tab; oudere entries
-// die deze velden nog hebben blijven ongemoeid (worden niet meer getoond,
-// maar gaan niet verloren bij het opslaan van een bewerking).
+// Oudere entries hadden security/onderhoud als los tekstveld en geen
+// ziekmeldingen/aanvragen. Normaliseer die naar de nieuwe (array-)vorm.
 const INIT_KEYS = ["synop_init", "synop_amhs_init", "metar_init", "klima_init", "taf_init", "wis_synop_init", "upload_metar_init", "digitaal_wx_init", "digitaal_klima_init"];
 
 function normalizeInitial(initial) {
   const merged = initial ? { ...DEF_O_SHIFT, ...initial } : { ...DEF_O_SHIFT, datum: today() };
   if (!Array.isArray(merged.security)) merged.security = merged.security ? [merged.security] : [""];
+  if (!Array.isArray(merged.onderhoud)) merged.onderhoud = merged.onderhoud ? [merged.onderhoud] : [""];
   if (!Array.isArray(merged.ziekmeldingen)) merged.ziekmeldingen = [];
   if (!Array.isArray(merged.aanvragen)) merged.aanvragen = [];
   if (Array.isArray(merged.personen)) {
@@ -215,6 +215,7 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
           </div>
           <div className="field-grid">
             <RepeatText label="Security" value={f.security} onChange={v => upd("security", v)} placeholder="Naam" />
+            <RepeatText label="Onderhoudmedewerker" value={f.onderhoud} onChange={v => upd("onderhoud", v)} placeholder="Naam" />
           </div>
         </div>
       </div>
@@ -414,6 +415,7 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
             <Field label="Hydrofoor" field="byz_hydrofoor" val={f.byz_hydrofoor} onChange={upd} />
             <Field label="Stroomonderbrekingen" field="byz_stroom" val={f.byz_stroom} onChange={upd} />
             <Field label="Levering SWM water" field="byz_swm" val={f.byz_swm} onChange={upd} />
+            <Field label="Toilet" field="byz_toilet" val={f.byz_toilet} onChange={upd} />
             <div className="field">
               <label>Maaiwerkzaamheden</label>
               <select value={f.byz_maaiwerkzaamheden} onChange={e => upd("byz_maaiwerkzaamheden", e.target.value)}>

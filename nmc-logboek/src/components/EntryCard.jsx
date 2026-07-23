@@ -20,7 +20,11 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
   const namen = isF ? (personenNamen || e.meteoroloog) : personenNamen;
   const adminNamen = (e.administratie || []).filter(Boolean).join(", ");
   const onderhoudNamen = (e.onderhoud || []).filter(Boolean).join(", ");
-  const werkPerUur = Object.entries(e.werkzaamheden_per_uur || {}).filter(([, v]) => v);
+  // Oudere administratie-entries hadden werkzaamheden als per-uur object i.p.v.
+  // één tekstveld; toon die nog netjes als er geen `werkzaamheden`-string is.
+  const werkzaamhedenTekst = typeof e.werkzaamheden === "string" && e.werkzaamheden
+    ? e.werkzaamheden
+    : Object.entries(e.werkzaamheden_per_uur || {}).filter(([, v]) => v).map(([uur, v]) => `${uur}: ${v}`).join("\n");
 
   // Toont elk tijdstip met de bijbehorende initialen: "12 UTC (AB), 13 UTC (CD)".
   const fmtSlots = (arr, initMap) => (arr || []).map(t => `${t}${initMap?.[t] ? ` (${initMap[t]})` : ""}`).join(", ");
@@ -47,7 +51,7 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
       <div className="entry-body">
         {!isAdmin && ef(isF ? "Meteoroloog" : "Adj.-meteorologen", namen)}
         {isAdmin && ef("Administratie", adminNamen)}
-        {isAdmin && ef("Onderhoudmedewerker", onderhoudNamen)}
+        {(isAdmin || isO) && ef("Onderhoudmedewerker", onderhoudNamen)}
         {isF && (e.verwachtingen_checks || []).length > 0 && ef("Verwachtingen uitgebracht", e.verwachtingen_checks)}
         {isF && ef("Anders (omschrijf)", e.verwachtingen)}
         {isF && (e.wu_products?.length || e.wu_anders) && <div className="ef-block"><div className="ef-label">Web Upload</div><div className="ef-value">{[...(e.wu_products || []), e.wu_anders && `Anders: ${e.wu_anders}`].filter(Boolean).join(", ")}</div></div>}
@@ -61,11 +65,7 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
           </div>
         )}
         {storingen.length > 0 && <div className="ef-block" style={{ borderLeft: "3px solid var(--danger)" }}><div className="ef-label">Storingen / Defecten</div><div className="ef-value">{storingen.join("\n")}</div></div>}
-        {isAdmin && werkPerUur.length > 0 && (
-          <div className="ef-block"><div className="ef-label">Werkzaamheden per uur</div><div className="ef-value">
-            {werkPerUur.map(([uur, v]) => `${uur}: ${v}`).join("\n")}
-          </div></div>
-        )}
+        {isAdmin && ef("Werkzaamheden", werkzaamhedenTekst)}
         {isAdmin && ef("Onderhoud", e.onderhoud_notities)}
         {isO && (e.personen || []).map((p, idx) => {
           const heeftWz = (p.synop_gedaan?.length || p.synop_amhs_gedaan?.length || p.metar_gedaan?.length || p.klima_gedaan?.length || p.taf_gedaan?.length || p.digitaal_speci_gedaan || p.rr_gedaan);
@@ -86,6 +86,7 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
           );
         })}
         {ef("Maaiwerkzaamheden", e.byz_maaiwerkzaamheden)}
+        {ef("Toilet", e.byz_toilet)}
         {(e.ziekmeldingen || []).length > 0 && (
           <div className="ef-block"><div className="ef-label">Ziektemeldingen</div><div className="ef-value">
             {e.ziekmeldingen.map((z, i) => `${[z.tijd, z.naam, z.periode].filter(Boolean).join(" — ")}`).filter(Boolean).join("\n")}

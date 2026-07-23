@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ADMIN_SHIFT, ADMIN_UREN } from "../constants.js";
+import { ADMIN_SHIFT, MAAIWERK_OPTS } from "../constants.js";
 import { today, nowId } from "../utils.js";
 import { checkDuplicate } from "../api.js";
 import Field from "./ui/Field.jsx";
@@ -9,16 +9,29 @@ const DEF_ADMIN = {
   datum: today(),
   administratie: [""],
   onderhoud: [""],
-  werkzaamheden_per_uur: Object.fromEntries(ADMIN_UREN.map(u => [u, ""])),
+  werkzaamheden: "",
+  byz_dienstauto: "",
+  byz_dienstbus: "",
+  byz_hydrofoor: "",
+  byz_stroom: "",
+  byz_swm: "",
+  byz_maaiwerkzaamheden: "",
+  byz_toilet: "",
   onderhoud_notities: "",
   byz_algemeen: "",
 };
 
+// Oudere entries hadden werkzaamheden als per-uur object; migreer die naar één
+// vrij tekstveld zodat bestaand werk niet verloren gaat bij het bewerken.
 function normalizeInitial(initial) {
   const merged = initial ? { ...DEF_ADMIN, ...initial } : { ...DEF_ADMIN, datum: today() };
   if (!Array.isArray(merged.administratie) || merged.administratie.length === 0) merged.administratie = [""];
   if (!Array.isArray(merged.onderhoud) || merged.onderhoud.length === 0) merged.onderhoud = [""];
-  merged.werkzaamheden_per_uur = { ...Object.fromEntries(ADMIN_UREN.map(u => [u, ""])), ...(merged.werkzaamheden_per_uur || {}) };
+  if (typeof merged.werkzaamheden !== "string") {
+    merged.werkzaamheden = merged.werkzaamheden_per_uur && typeof merged.werkzaamheden_per_uur === "object"
+      ? Object.entries(merged.werkzaamheden_per_uur).filter(([, v]) => v).map(([uur, v]) => `${uur}: ${v}`).join("\n")
+      : "";
+  }
   return merged;
 }
 
@@ -27,7 +40,6 @@ export default function AdministratieForm({ onSave, gebruiker, initial }) {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const upd = (k, v) => setF(p => ({ ...p, [k]: v }));
-  const updUur = (uur, v) => setF(p => ({ ...p, werkzaamheden_per_uur: { ...p.werkzaamheden_per_uur, [uur]: v } }));
 
   const validate = () => {
     const e = {};
@@ -50,7 +62,7 @@ export default function AdministratieForm({ onSave, gebruiker, initial }) {
         }
       }
       await onSave({ ...f, type: "administratie", shift: ADMIN_SHIFT, meteoroloog, id: f.id || nowId(), ts: Date.now(), ingevuld_door: gebruiker });
-      setF({ ...DEF_ADMIN, datum: today(), werkzaamheden_per_uur: Object.fromEntries(ADMIN_UREN.map(u => [u, ""])) });
+      setF({ ...DEF_ADMIN, datum: today() });
       setErrors({});
     } finally {
       setSaving(false);
@@ -79,11 +91,29 @@ export default function AdministratieForm({ onSave, gebruiker, initial }) {
       </div>
 
       <div className="card">
-        <div className="card-header"><span>🕐 Werkzaamheden per uur</span></div>
+        <div className="card-header"><span>📊 Werkzaamheden</span></div>
         <div className="card-body">
-          {ADMIN_UREN.map(uur => (
-            <Field key={uur} label={`${uur} — Verrichte werkzaamheden`} field={uur} val={f.werkzaamheden_per_uur[uur]} onChange={(_, v) => updUur(uur, v)} type="textarea" />
-          ))}
+          <div className="field-grid single"><Field label="" field="werkzaamheden" val={f.werkzaamheden} onChange={upd} type="textarea" /></div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>🚗 Bijzonderheden – Logistiek</span></div>
+        <div className="card-body">
+          <div className="field-grid">
+            <Field label="Dienstauto" field="byz_dienstauto" val={f.byz_dienstauto} onChange={upd} />
+            <Field label="Dienstbus" field="byz_dienstbus" val={f.byz_dienstbus} onChange={upd} />
+            <Field label="Hydrofoor" field="byz_hydrofoor" val={f.byz_hydrofoor} onChange={upd} />
+            <Field label="Stroomonderbrekingen" field="byz_stroom" val={f.byz_stroom} onChange={upd} />
+            <Field label="Levering SWM water" field="byz_swm" val={f.byz_swm} onChange={upd} />
+            <Field label="Toilet" field="byz_toilet" val={f.byz_toilet} onChange={upd} />
+            <div className="field">
+              <label>Maaiwerkzaamheden</label>
+              <select value={f.byz_maaiwerkzaamheden} onChange={e => upd("byz_maaiwerkzaamheden", e.target.value)}>
+                {MAAIWERK_OPTS.map(o => <option key={o} value={o}>{o === "" ? "N.v.t." : o}</option>)}
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 

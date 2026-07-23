@@ -73,10 +73,6 @@ export const VERWACHTINGEN_PER_SHIFT = {
 // wordt intern gebruikt (o.a. voor de duplicaat-check) maar niet aan de
 // gebruiker getoond.
 export const ADMIN_SHIFT = "Kantoordienst (08:00–15:00 LT)";
-export const ADMIN_UREN = [
-  "08:00–09:00", "09:00–10:00", "10:00–11:00", "11:00–12:00",
-  "12:00–13:00", "13:00–14:00", "14:00–15:00",
-];
 
 export const VERWACHT_PER_SHIFT = {
   "Ochtenddienst (08:00–15:00 LT)": { synop: 7, synop_amhs: 3, metar: 7, klima: 2, upload_metar: 7, digitaal_wx: 7, digitaal_klima: 2, wis: 7, rr: 1, taf: 2 },
@@ -141,6 +137,7 @@ export const EXPORT_TREE = [
     { id: "byz_stroom", label: "Stroomonderbrekingen" },
     { id: "byz_swm", label: "Levering SWM water" },
     { id: "byz_maaiwerkzaamheden", label: "Maaiwerkzaamheden" },
+    { id: "byz_toilet", label: "Toilet" },
   ] },
   { id: "operationeel", label: "Operationeel", elements: [
     { id: "byz_airlines", label: "Airlines" },

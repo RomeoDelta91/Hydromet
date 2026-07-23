@@ -34,6 +34,7 @@ const DEF_F = {
   byz_stroom: "",
   byz_swm: "",
   byz_maaiwerkzaamheden: "",
+  byz_toilet: "",
   ziekmeldingen: [],
   aanvragen: [],
   byz_airlines: "",
@@ -249,6 +250,7 @@ export default function ForecasterForm({ onSave, gebruiker, initial }) {
             <Field label="Hydrofoor" field="byz_hydrofoor" val={f.byz_hydrofoor} onChange={upd} />
             <Field label="Stroomonderbrekingen" field="byz_stroom" val={f.byz_stroom} onChange={upd} />
             <Field label="Levering SWM water" field="byz_swm" val={f.byz_swm} onChange={upd} />
+            <Field label="Toilet" field="byz_toilet" val={f.byz_toilet} onChange={upd} />
             <div className="field">
               <label>Maaiwerkzaamheden</label>
               <select value={f.byz_maaiwerkzaamheden} onChange={e => upd("byz_maaiwerkzaamheden", e.target.value)}>
