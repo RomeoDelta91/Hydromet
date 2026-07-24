@@ -57,13 +57,17 @@ const DEF_O_SHIFT = {
   inst_radar: "OK",
   wz_climate: "Niet gemaakt",
   wz_climate_maand: "",
+  wz_climate_init: "",
   wz_act: "Niet gemaakt",
   wz_act_maand: "",
+  wz_act_init: "",
   wz_acs: "Niet gemaakt",
   wz_acs_maand: "",
+  wz_acs_init: "",
   wz_temp: "Niet gemaakt",
   wz_temp_dag: "",
   wz_temp_tijd: "",
+  wz_temp_init: "",
   byz_dienstauto: "",
   byz_dienstbus: "",
   byz_hydrofoor: "",
@@ -102,7 +106,7 @@ function normalizeInitial(initial) {
   return merged;
 }
 
-function WzRow({ label, field_status, field_maand, val_status, val_maand, onChange, isTemp, val_dag, val_tijd }) {
+function WzRow({ label, field_status, field_maand, field_init, val_status, val_maand, val_init, onChange, isTemp, val_dag, val_tijd }) {
   return (
     <div style={{ padding: "8px 0", borderBottom: "1px solid var(--paperMid)" }}>
       <div className="status-row" style={{ borderBottom: "none", paddingBottom: 0 }}>
@@ -125,6 +129,9 @@ function WzRow({ label, field_status, field_maand, val_status, val_maand, onChan
           <input type="time" value={val_tijd} onChange={e => onChange("wz_temp_tijd", e.target.value)}
             style={{ border: "1px solid var(--paperMid)", borderRadius: 6, padding: "6px 8px", fontSize: 12, flex: 1, fontFamily: "IBM Plex Mono,monospace", color: "var(--ink)", background: "var(--paper)" }} />
         </div>
+      )}
+      {val_status === "Gemaakt" && (
+        <InitialsBox value={val_init} onChange={v => onChange(field_init, v)} />
       )}
     </div>
   );
@@ -162,6 +169,14 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
     });
   };
 
+  // Bij meerdere observers moet je per aangevinkt tijdstip kunnen zien wie het
+  // deed — initialen zijn dan verplicht. Bij één observer is dat niet nodig.
+  const TIJDSLOT_CATS = [
+    ["synop_gedaan", "synop_init"], ["synop_amhs_gedaan", "synop_amhs_init"], ["metar_gedaan", "metar_init"],
+    ["klima_gedaan", "klima_init"], ["upload_metar_gedaan", "upload_metar_init"], ["digitaal_wx_gedaan", "digitaal_wx_init"],
+    ["digitaal_klima_gedaan", "digitaal_klima_init"], ["wis_synop_gedaan", "wis_synop_init"], ["taf_gedaan", "taf_init"],
+  ];
+
   const validate = () => {
     const e = {};
     if (!f.datum) e.datum = true;
@@ -169,6 +184,17 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
     f.personen.forEach((p, idx) => {
       if (!p.naam.trim()) e[`persoon_naam_${idx}`] = true;
     });
+    if (f.personen.length > 1) {
+      f.personen.forEach(p => {
+        TIJDSLOT_CATS.forEach(([gedaanKey, initKey]) => {
+          (p[gedaanKey] || []).forEach(slot => {
+            if (!p[initKey]?.[slot]) e.initialen_verplicht = true;
+          });
+        });
+        if (p.digitaal_speci_gedaan && !p.digitaal_speci_init) e.initialen_verplicht = true;
+        if (p.rr_gedaan && !p.rr_init) e.initialen_verplicht = true;
+      });
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -269,6 +295,11 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
       <div className="card">
         <div className="card-header"><span>📊 Werkzaamheden</span></div>
         <div className="card-body">
+          {errors.initialen_verplicht && (
+            <p style={{ fontSize: 12, color: "var(--danger)", marginBottom: 10, fontWeight: 600 }}>
+              ⚠ Er zijn meerdere observers ingevoerd — vul bij elk aangevinkt tijdstip de initialen in voordat u opslaat.
+            </p>
+          )}
           {!shift && <p style={{ fontSize: 12, color: "var(--inkLo)", marginBottom: 12 }}>Selecteer eerst een shift.</p>}
           {shift && f.personen.length > 1 && (
             <div className="persoon-tabs">
@@ -399,10 +430,10 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
       <div className="card">
         <div className="card-header"><span>📁 Overige Werkzaamheden</span></div>
         <div className="card-body">
-          <WzRow label="Climate Report" field_status="wz_climate" field_maand="wz_climate_maand" val_status={f.wz_climate} val_maand={f.wz_climate_maand} onChange={upd} />
-          <WzRow label="ACT" field_status="wz_act" field_maand="wz_act_maand" val_status={f.wz_act} val_maand={f.wz_act_maand} onChange={upd} />
-          <WzRow label="ACS" field_status="wz_acs" field_maand="wz_acs_maand" val_status={f.wz_acs} val_maand={f.wz_acs_maand} onChange={upd} />
-          <WzRow label="Temp" field_status="wz_temp" field_maand="wz_temp_dag" val_status={f.wz_temp} val_maand={f.wz_temp_dag} val_dag={f.wz_temp_dag} val_tijd={f.wz_temp_tijd} onChange={upd} isTemp={true} />
+          <WzRow label="Climate Report" field_status="wz_climate" field_maand="wz_climate_maand" field_init="wz_climate_init" val_status={f.wz_climate} val_maand={f.wz_climate_maand} val_init={f.wz_climate_init} onChange={upd} />
+          <WzRow label="ACT" field_status="wz_act" field_maand="wz_act_maand" field_init="wz_act_init" val_status={f.wz_act} val_maand={f.wz_act_maand} val_init={f.wz_act_init} onChange={upd} />
+          <WzRow label="ACS" field_status="wz_acs" field_maand="wz_acs_maand" field_init="wz_acs_init" val_status={f.wz_acs} val_maand={f.wz_acs_maand} val_init={f.wz_acs_init} onChange={upd} />
+          <WzRow label="Temp" field_status="wz_temp" field_maand="wz_temp_dag" field_init="wz_temp_init" val_status={f.wz_temp} val_maand={f.wz_temp_dag} val_dag={f.wz_temp_dag} val_tijd={f.wz_temp_tijd} val_init={f.wz_temp_init} onChange={upd} isTemp={true} />
         </div>
       </div>
 

@@ -19,8 +19,10 @@ const COLUMN_DEFS = [
   { id: "inst_awos", key: "inst_awos", label: "AWOS (inst.)" },
   { id: "inst_pc_lhb", key: "inst_pc_lhb", label: "PC LHB" },
   { id: "inst_radar", key: "inst_radar", label: "RADAR" },
-  { id: "werkzaamheden", key: "werkzaamheden", label: "Werkzaamheden" },
-  { id: "werkzaamheden", key: "onderhoud_notities", label: "Onderhoud" },
+  { id: "werkzaamheden", key: "werkzaamheden", label: "Werkzaamheden-Admin" },
+  { id: "werkzaamheden", key: "onderhoud_notities", label: "Werkzaamheden-Onderhoud" },
+  { id: "werkzaamheden", key: "spullen_ontvangen", label: "Spullen ontvangen" },
+  { id: "werkzaamheden", key: "spullen_verzonden", label: "Spullen verzonden" },
   { id: "webupload", key: "webupload", label: "Web Upload" },
   { id: "notams", key: "notams", label: "NOTAMs" },
   { id: "byz_dienstauto", key: "byz_dienstauto", label: "Dienstauto" },
@@ -94,6 +96,8 @@ function rowsForEntry(e) {
     ziekmeldingen: fmtZiek(e.ziekmeldingen), aanvragen: fmtAanvr(e.aanvragen),
     onderhoud_notities: e.onderhoud_notities ?? "",
     onderhoud_namen: e.type === "administratie" ? "" : (e.onderhoud || []).filter(Boolean).join(", "),
+    spullen_ontvangen: e.spullen_ontvangen ?? "",
+    spullen_verzonden: e.spullen_verzonden ?? "",
     byz_algemeen: e.byz_algemeen ?? "",
   };
 

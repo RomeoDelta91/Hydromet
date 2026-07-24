@@ -68,12 +68,20 @@ function administratieWerkSection(e) {
     ? e.werkzaamheden
     : Object.entries(e.werkzaamheden_per_uur || {}).filter(([, v]) => v).map(([uur, v]) => `${uur}: ${v}`).join("\n");
   if (tekst) {
-    blocks.push(new Paragraph({ text: "Werkzaamheden", heading: HeadingLevel.HEADING_3 }));
+    blocks.push(new Paragraph({ text: "Werkzaamheden-Admin", heading: HeadingLevel.HEADING_3 }));
     blocks.push(new Paragraph({ text: tekst }));
   }
   if (e.onderhoud_notities) {
-    blocks.push(new Paragraph({ text: "Onderhoud", heading: HeadingLevel.HEADING_4 }));
+    blocks.push(new Paragraph({ text: "Werkzaamheden-Onderhoud", heading: HeadingLevel.HEADING_4 }));
     blocks.push(new Paragraph({ text: e.onderhoud_notities }));
+  }
+  if (e.spullen_ontvangen) {
+    blocks.push(new Paragraph({ text: "Spullen ontvangen", heading: HeadingLevel.HEADING_4 }));
+    blocks.push(new Paragraph({ text: e.spullen_ontvangen }));
+  }
+  if (e.spullen_verzonden) {
+    blocks.push(new Paragraph({ text: "Spullen verzonden", heading: HeadingLevel.HEADING_4 }));
+    blocks.push(new Paragraph({ text: e.spullen_verzonden }));
   }
   return blocks;
 }

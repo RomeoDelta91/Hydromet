@@ -65,8 +65,10 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
           </div>
         )}
         {storingen.length > 0 && <div className="ef-block" style={{ borderLeft: "3px solid var(--danger)" }}><div className="ef-label">Storingen / Defecten</div><div className="ef-value">{storingen.join("\n")}</div></div>}
-        {isAdmin && ef("Werkzaamheden", werkzaamhedenTekst)}
-        {isAdmin && ef("Onderhoud", e.onderhoud_notities)}
+        {isAdmin && ef("Werkzaamheden-Admin", werkzaamhedenTekst)}
+        {isAdmin && ef("Werkzaamheden-Onderhoud", e.onderhoud_notities)}
+        {isAdmin && ef("Spullen ontvangen", e.spullen_ontvangen)}
+        {isAdmin && ef("Spullen verzonden", e.spullen_verzonden)}
         {isO && (e.personen || []).map((p, idx) => {
           const heeftWz = (p.synop_gedaan?.length || p.synop_amhs_gedaan?.length || p.metar_gedaan?.length || p.klima_gedaan?.length || p.taf_gedaan?.length || p.digitaal_speci_gedaan || p.rr_gedaan);
           if (!heeftWz) return null;

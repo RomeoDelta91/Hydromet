@@ -10,6 +10,9 @@ const DEF_ADMIN = {
   administratie: [""],
   onderhoud: [""],
   werkzaamheden: "",
+  onderhoud_notities: "",
+  spullen_ontvangen: "",
+  spullen_verzonden: "",
   byz_dienstauto: "",
   byz_dienstbus: "",
   byz_hydrofoor: "",
@@ -17,7 +20,6 @@ const DEF_ADMIN = {
   byz_swm: "",
   byz_maaiwerkzaamheden: "",
   byz_toilet: "",
-  onderhoud_notities: "",
   byz_algemeen: "",
 };
 
@@ -91,10 +93,25 @@ export default function AdministratieForm({ onSave, gebruiker, initial }) {
       </div>
 
       <div className="card">
-        <div className="card-header"><span>📊 Werkzaamheden</span></div>
+        <div className="card-header"><span>📊 Werkzaamheden-Admin</span></div>
         <div className="card-body">
           <div className="field-grid single"><Field label="" field="werkzaamheden" val={f.werkzaamheden} onChange={upd} type="textarea" /></div>
         </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>🔧 Werkzaamheden-Onderhoud</span></div>
+        <div className="card-body"><div className="field-grid single"><Field label="" field="onderhoud_notities" val={f.onderhoud_notities} onChange={upd} type="textarea" /></div></div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>📦 Spullen ontvangen</span></div>
+        <div className="card-body"><div className="field-grid single"><Field label="" field="spullen_ontvangen" val={f.spullen_ontvangen} onChange={upd} type="textarea" /></div></div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>📤 Spullen verzonden</span></div>
+        <div className="card-body"><div className="field-grid single"><Field label="" field="spullen_verzonden" val={f.spullen_verzonden} onChange={upd} type="textarea" /></div></div>
       </div>
 
       <div className="card">
@@ -115,11 +132,6 @@ export default function AdministratieForm({ onSave, gebruiker, initial }) {
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="card">
-        <div className="card-header"><span>🔧 Onderhoud</span></div>
-        <div className="card-body"><div className="field-grid single"><Field label="" field="onderhoud_notities" val={f.onderhoud_notities} onChange={upd} type="textarea" /></div></div>
       </div>
 
       <div className="card">

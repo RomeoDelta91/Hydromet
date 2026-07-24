@@ -49,9 +49,9 @@ export const WIS_TIMES = {
 };
 
 export const TAF_TIMES = {
-  "Ochtenddienst (08:00–15:00 LT)": ["12 UTC", "18 UTC"],
-  "Middagdienst (15:00–22:00 LT)": ["18 UTC", "00 UTC"],
-  "Nachtdienst (22:00–08:00 LT)": ["00 UTC", "06 UTC", "12 UTC"],
+  "Ochtenddienst (08:00–15:00 LT)": ["16 UTC"],
+  "Middagdienst (15:00–22:00 LT)": ["22 UTC"],
+  "Nachtdienst (22:00–08:00 LT)": ["04 UTC", "10 UTC"],
 };
 
 export const WEB_PRODUCTS = [
@@ -75,9 +75,9 @@ export const VERWACHTINGEN_PER_SHIFT = {
 export const ADMIN_SHIFT = "Kantoordienst (08:00–15:00 LT)";
 
 export const VERWACHT_PER_SHIFT = {
-  "Ochtenddienst (08:00–15:00 LT)": { synop: 7, synop_amhs: 3, metar: 7, klima: 2, upload_metar: 7, digitaal_wx: 7, digitaal_klima: 2, wis: 7, rr: 1, taf: 2 },
-  "Middagdienst (15:00–22:00 LT)": { synop: 7, synop_amhs: 2, metar: 7, klima: 2, upload_metar: 7, digitaal_wx: 7, digitaal_klima: 2, wis: 7, rr: 0, taf: 2 },
-  "Nachtdienst (22:00–08:00 LT)": { synop: 10, synop_amhs: 3, metar: 10, klima: 0, upload_metar: 10, digitaal_wx: 10, digitaal_klima: 0, wis: 10, rr: 0, taf: 3 },
+  "Ochtenddienst (08:00–15:00 LT)": { synop: 7, synop_amhs: 3, metar: 7, klima: 2, upload_metar: 7, digitaal_wx: 7, digitaal_klima: 2, wis: 7, rr: 1, taf: 1 },
+  "Middagdienst (15:00–22:00 LT)": { synop: 7, synop_amhs: 2, metar: 7, klima: 2, upload_metar: 7, digitaal_wx: 7, digitaal_klima: 2, wis: 7, rr: 0, taf: 1 },
+  "Nachtdienst (22:00–08:00 LT)": { synop: 10, synop_amhs: 3, metar: 10, klima: 0, upload_metar: 10, digitaal_wx: 10, digitaal_klima: 0, wis: 10, rr: 0, taf: 2 },
 };
 
 export const WZ_LABELS = {
