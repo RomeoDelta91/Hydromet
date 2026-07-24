@@ -4,7 +4,8 @@ import * as XLSX from "xlsx";
 // leaf-id in de Overzicht-selectie staat (zelfde ids als EXPORT_TREE).
 const COLUMN_DEFS = [
   { id: null, key: "datum", label: "Datum" },
-  { id: null, key: "shift", label: "Shift" },
+  { id: null, key: "shift", label: "Dienst" },
+  { id: null, key: "shift_code", label: "Shift" },
   { id: null, key: "type", label: "Type" },
   { id: null, key: "naam", label: "Naam" },
   { id: null, key: "onderhoud_namen", label: "Onderhoudmedewerker" },
@@ -83,6 +84,7 @@ function notamsVoor(e) {
 function rowsForEntry(e) {
   const base = {
     shift: e.type === "administratie" ? "" : (e.shift || ""),
+    shift_code: e.type === "administratie" ? "" : (e.shift_code || ""),
     type: e.type,
     com_telefoon: e.com_telefoon ?? "", com_internet: e.com_internet ?? "", com_amhs: e.com_amhs ?? "", com_awos: e.com_awos ?? "",
     com_werkmobiel: e.com_werkmobiel ?? "", com_charger: e.com_charger ?? "",

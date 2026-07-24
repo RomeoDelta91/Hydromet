@@ -4,6 +4,10 @@ export const SHIFTS = [
   "Nachtdienst (22:00–08:00 LT)",
 ];
 
+// Los van de Dienst (Ochtend-/Middag-/Nachtdienst): de shift-code van het
+// toestel/de dienstregeling.
+export const SHIFT_CODES = ["MT-101", "MT-102", "MT-103", "MT-104", "MT-105"];
+
 export const STATUS_OPTS = ["OK", "Storing", "Defect", "Uitgevallen", "N.v.t."];
 export const WZ_OPTS = ["Niet gemaakt", "Gemaakt", "N.v.t."];
 

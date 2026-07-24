@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SHIFTS, MONTHS_NL, WZ_OPTS, SYNOP_TIMES, SYNOP_AMHS_TIMES, KLIMA_SHIFT, WIS_TIMES, TAF_TIMES, MAAIWERK_OPTS } from "../constants.js";
+import { SHIFTS, SHIFT_CODES, MONTHS_NL, WZ_OPTS, SYNOP_TIMES, SYNOP_AMHS_TIMES, KLIMA_SHIFT, WIS_TIMES, TAF_TIMES, MAAIWERK_OPTS } from "../constants.js";
 import { today, nowId, filterTijdenVoorPersoon } from "../utils.js";
 import { checkDuplicate } from "../api.js";
 import Field from "./ui/Field.jsx";
@@ -42,6 +42,7 @@ export const DEF_PERSOON = {
 const DEF_O_SHIFT = {
   datum: today(),
   shift: "",
+  shift_code: "",
   personen: [{ ...DEF_PERSOON }],
   security: [""],
   onderhoud: [""],
@@ -237,7 +238,10 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
         <div className="card-body">
           <div className="field-grid">
             <div className="field"><label>Datum {errors.datum && <span style={{ color: "var(--danger)" }}>*</span>}</label><input type="date" value={f.datum} onChange={e => upd("datum", e.target.value)} style={reqStyle("datum")} /></div>
-            <div className="field"><label>Shift {errors.shift && <span style={{ color: "var(--danger)" }}>*</span>}</label><select value={f.shift} onChange={e => upd("shift", e.target.value)} style={reqStyle("shift")}><option value="">Selecteer…</option>{SHIFTS.map(s => <option key={s}>{s}</option>)}</select></div>
+            <div className="field"><label>Dienst {errors.shift && <span style={{ color: "var(--danger)" }}>*</span>}</label><select value={f.shift} onChange={e => upd("shift", e.target.value)} style={reqStyle("shift")}><option value="">Selecteer…</option>{SHIFTS.map(s => <option key={s}>{s}</option>)}</select></div>
+          </div>
+          <div className="field-grid">
+            <div className="field"><label>Shift</label><select value={f.shift_code} onChange={e => upd("shift_code", e.target.value)}><option value="">Selecteer…</option>{SHIFT_CODES.map(s => <option key={s}>{s}</option>)}</select></div>
           </div>
           <div className="field-grid">
             <RepeatText label="Security" value={f.security} onChange={v => upd("security", v)} placeholder="Naam" />

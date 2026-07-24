@@ -41,6 +41,7 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
           <span className={`badge badge-${e.type}`}>{isF ? "Forecaster" : isAdmin ? "Administratie" : "Observer"}</span>
           <span className="entry-date">{e.datum}</span>
           <span style={{ fontSize: 11, color: "var(--inkLo)", fontWeight: 600 }}>{e.shift || "—"}</span>
+          {e.shift_code && <span style={{ fontSize: 11, color: "var(--inkLo)", fontFamily: "IBM Plex Mono,monospace" }}>{e.shift_code}</span>}
           {storingen.length > 0 && <span className="badge badge-warn">⚠ Storing</span>}
         </div>
         <div className="entry-actions">

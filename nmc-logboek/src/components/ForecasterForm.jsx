@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { SHIFTS, NOTAM_SHIFTS, WEB_PRODUCTS, MAAIWERK_OPTS, VERWACHTINGEN_PER_SHIFT } from "../constants.js";
+import { SHIFTS, SHIFT_CODES, NOTAM_SHIFTS, WEB_PRODUCTS, MAAIWERK_OPTS, VERWACHTINGEN_PER_SHIFT } from "../constants.js";
 import { today, nowId } from "../utils.js";
 import { checkDuplicate } from "../api.js";
 import Field from "./ui/Field.jsx";
@@ -12,6 +12,7 @@ const DEF_PERSOON_F = { naam: "" };
 const DEF_F = {
   datum: today(),
   shift: "",
+  shift_code: "",
   personen: [{ ...DEF_PERSOON_F }],
   verwachtingen_checks: [],
   verwachtingen: "",
@@ -130,7 +131,10 @@ export default function ForecasterForm({ onSave, gebruiker, initial }) {
         <div className="card-body">
           <div className="field-grid">
             <div className="field"><label>Datum {errors.datum && <span style={{ color: "var(--danger)" }}>*</span>}</label><input type="date" value={f.datum} onChange={e => upd("datum", e.target.value)} style={reqStyle("datum")} /></div>
-            <div className="field"><label>Shift {errors.shift && <span style={{ color: "var(--danger)" }}>*</span>}</label><select value={f.shift} onChange={e => upd("shift", e.target.value)} style={reqStyle("shift")}><option value="">Selecteer…</option>{SHIFTS.map(s => <option key={s}>{s}</option>)}</select></div>
+            <div className="field"><label>Dienst {errors.shift && <span style={{ color: "var(--danger)" }}>*</span>}</label><select value={f.shift} onChange={e => upd("shift", e.target.value)} style={reqStyle("shift")}><option value="">Selecteer…</option>{SHIFTS.map(s => <option key={s}>{s}</option>)}</select></div>
+          </div>
+          <div className="field-grid">
+            <div className="field"><label>Shift</label><select value={f.shift_code} onChange={e => upd("shift_code", e.target.value)}><option value="">Selecteer…</option>{SHIFT_CODES.map(s => <option key={s}>{s}</option>)}</select></div>
           </div>
           {Object.keys(errors).length > 0 && <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 4 }}>Vul de verplichte velden in (*).</p>}
           <div style={{ marginTop: 8 }}>

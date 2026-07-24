@@ -43,7 +43,8 @@ function basisgegevensSection(e) {
   const isAdmin = e.type === "administratie";
   const personenNamen = (e.personen || []).map(p => p.naam).filter(Boolean).join(", ");
   const rows = [kv("Datum", e.datum)];
-  if (!isAdmin) rows.push(kv("Shift", e.shift));
+  if (!isAdmin) rows.push(kv("Dienst", e.shift));
+  if (!isAdmin && e.shift_code) rows.push(kv("Shift", e.shift_code));
   if (isAdmin) {
     rows.push(kv("Administratie", (e.administratie || []).filter(Boolean).join(", ") || "-"));
   } else {
