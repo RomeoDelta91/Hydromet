@@ -137,12 +137,12 @@ function nmc_chef_required(WP_REST_Request $req) {
     return $u && in_array($u['role'], ['chef', 'admin'], true);
 }
 
-// Lezen/exporteren van het overzicht: chef, admin én de administratie-rol.
-// De administratie-rol mag uitsluitend lezen en downloaden — niet bewerken of
-// verwijderen (die routes blijven op nmc_chef_required staan).
+// Lezen/exporteren van het overzicht: chef, admin, administratie én viewer.
+// Administratie en viewer mogen uitsluitend lezen (viewer ook Analyse) — niet
+// bewerken of verwijderen (die routes blijven op nmc_chef_required staan).
 function nmc_overzicht_required(WP_REST_Request $req) {
     $u = nmc_current_user($req);
-    return $u && in_array($u['role'], ['chef', 'admin', 'administratie'], true);
+    return $u && in_array($u['role'], ['chef', 'admin', 'administratie', 'viewer'], true);
 }
 
 function nmc_admin_required(WP_REST_Request $req) {
@@ -399,7 +399,7 @@ function nmc_create_user(WP_REST_Request $req) {
     $username = sanitize_user($body['username'] ?? '');
     $naam     = sanitize_text_field($body['naam'] ?? '');
     $password = $body['password'] ?? '';
-    $role     = in_array($body['role'] ?? '', ['forecaster', 'observer', 'administratie', 'chef', 'admin'], true) ? $body['role'] : 'forecaster';
+    $role     = in_array($body['role'] ?? '', ['forecaster', 'observer', 'administratie', 'viewer', 'chef', 'admin'], true) ? $body['role'] : 'forecaster';
 
     if (!$username || !$naam || !$password) {
         return new WP_Error('missing_fields', 'Gebruikersnaam, naam en wachtwoord zijn verplicht', ['status' => 400]);
@@ -429,7 +429,7 @@ function nmc_update_user(WP_REST_Request $req) {
 
     $data = [];
     if (!empty($body['naam']))     $data['naam'] = sanitize_text_field($body['naam']);
-    if (!empty($body['role']) && in_array($body['role'], ['forecaster', 'observer', 'administratie', 'chef', 'admin'], true)) {
+    if (!empty($body['role']) && in_array($body['role'], ['forecaster', 'observer', 'administratie', 'viewer', 'chef', 'admin'], true)) {
         $data['role'] = $body['role'];
     }
     if (!empty($body['password'])) $data['password_hash'] = password_hash($body['password'], PASSWORD_BCRYPT);

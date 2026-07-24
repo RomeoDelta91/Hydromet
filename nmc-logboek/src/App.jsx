@@ -71,11 +71,14 @@ export default function App() {
     </div>
   );
 
+  const footer = <div className="app-footer">Developed by: R. Rajai &amp; R. Bidesie</div>;
+
   if (!gebruiker) {
     return (
       <div className="app-shell">
         {header}
         <LoginWithName label="NMC Logboek Login" onLogin={handleLogin} />
+        {footer}
       </div>
     );
   }
@@ -103,6 +106,7 @@ export default function App() {
       {tab === "beheer" && <UserAdmin showToast={showToast} />}
 
       <Toast message={toast} />
+      {footer}
     </div>
   );
 }

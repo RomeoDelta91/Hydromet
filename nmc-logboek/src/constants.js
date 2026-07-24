@@ -156,13 +156,15 @@ export const ALL_EXPORT_IDS = EXPORT_TREE.flatMap(s => s.elements.map(el => el.i
 // `roles` bepaalt welke ingelogde rol dit tabblad mag zien. Forecasters en
 // observers zijn elk beperkt tot hun eigen sectie; chef/admin hebben volledige
 // controle (Overzicht + Analyse). De administratie-rol mag het Overzicht alleen
-// bekijken en downloaden (niet bewerken/verwijderen). Beheer is enkel voor admin.
+// bekijken en downloaden (niet bewerken/verwijderen). De viewer-rol mag zowel
+// Overzicht als Analyse alleen bekijken (nooit bewerken/verwijderen). Beheer
+// is enkel voor admin.
 export const TABS = [
   { id: "forecaster", label: "Forecaster", loginLabel: "Forecaster Login", roles: ["forecaster", "chef", "admin"] },
   { id: "observer", label: "Observer", loginLabel: "Observer Login", roles: ["observer", "chef", "admin"] },
   { id: "administratie", label: "Administratie", loginLabel: "Administratie Login", roles: ["administratie", "chef", "admin"] },
-  { id: "overzicht", label: "Overzicht", loginLabel: "Overzicht Login", roles: ["administratie", "chef", "admin"] },
-  { id: "analyse", label: "Analyse", loginLabel: "Analyse Login", roles: ["chef", "admin"] },
+  { id: "overzicht", label: "Overzicht", loginLabel: "Overzicht Login", roles: ["administratie", "viewer", "chef", "admin"] },
+  { id: "analyse", label: "Analyse", loginLabel: "Analyse Login", roles: ["viewer", "chef", "admin"] },
   { id: "beheer", label: "Beheer", loginLabel: "Beheer Login", roles: ["admin"] },
 ];
 
