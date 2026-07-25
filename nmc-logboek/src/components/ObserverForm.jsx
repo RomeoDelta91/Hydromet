@@ -154,7 +154,7 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
   const isOchtend = shift === SHIFTS[0];
 
   const addPersoon = () => {
-    if (f.personen.length >= 4) return;
+    if (f.personen.length >= 6) return;
     setF(prev => ({ ...prev, personen: [...prev.personen, { ...DEF_PERSOON }] }));
   };
   const removePersoon = idx => {
@@ -267,7 +267,7 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
               </div>
             </div>
           ))}
-          {f.personen.length < 4 && (
+          {f.personen.length < 6 && (
             <button type="button" className="btn btn-secondary" onClick={addPersoon}>+ Voeg persoon toe</button>
           )}
           {Object.keys(errors).some(k => k.startsWith("persoon_naam_")) && <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 8 }}>Vul de naam van elke persoon in.</p>}

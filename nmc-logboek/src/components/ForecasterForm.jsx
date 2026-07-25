@@ -78,7 +78,7 @@ export default function ForecasterForm({ onSave, gebruiker, initial }) {
   }, [f.shift]);
 
   const addPersoon = () => {
-    if (f.personen.length >= 4) return;
+    if (f.personen.length >= 6) return;
     setF(prev => ({ ...prev, personen: [...prev.personen, { ...DEF_PERSOON_F }] }));
   };
   const removePersoon = idx => {
@@ -176,7 +176,7 @@ export default function ForecasterForm({ onSave, gebruiker, initial }) {
               </div>
             </div>
           ))}
-          {f.personen.length < 4 && (
+          {f.personen.length < 6 && (
             <button type="button" className="btn btn-secondary" onClick={addPersoon}>+ Voeg persoon toe</button>
           )}
         </div>
