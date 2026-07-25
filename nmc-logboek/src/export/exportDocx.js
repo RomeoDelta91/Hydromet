@@ -124,6 +124,11 @@ function webUploadSection(e) {
   return [heading("Web Upload", HeadingLevel.HEADING_3), new Paragraph({ text: items })];
 }
 
+function gemaildeVerwachtingenSection(e) {
+  if (e.type !== "forecaster" || !(e.gemailde_verwachtingen || []).length) return [];
+  return [heading("Gemailde Verwachtingen", HeadingLevel.HEADING_3), new Paragraph({ text: e.gemailde_verwachtingen.join(", ") })];
+}
+
 function notamSection(e) {
   if (e.type !== "forecaster" || !e.notam_verzonden) return [];
   const rows = (e.notam_shifts || []).map(s => new TableRow({ children: [cell("Shift", { bold: true, width: 35 }), cell(s)] }));
@@ -195,6 +200,7 @@ function entrySections(e, ids) {
   if (Object.keys(instLabels).length) blocks.push(...instrumentenSection(e, instLabels));
   if (sec("werkzaamheden") && e.type === "observer") blocks.push(...werkzaamhedenSection(e));
   if (sec("werkzaamheden") && isAdmin) blocks.push(...administratieWerkSection(e));
+  if (sec("gemailde_verwachtingen")) blocks.push(...gemaildeVerwachtingenSection(e));
   if (sec("webupload")) blocks.push(...webUploadSection(e));
   if (sec("notams")) blocks.push(...notamSection(e));
   blocks.push(...bijzonderhedenSection(e, ids));

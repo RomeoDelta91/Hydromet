@@ -63,6 +63,14 @@ export const WEB_PRODUCTS = [
   "Alert", "SIGMET", "Meerdaagse verwachting",
 ];
 
+// Gemailde Verwachtingen: welke producten er per shift gemaild worden
+// (aanvinkopties, geen initialen nodig).
+export const GEMAILDE_VERWACHTINGEN_PER_SHIFT = {
+  "Ochtenddienst (08:00–15:00 LT)": ["Verwachting OW/NCCR", "Media Verwachting", "Tabular forecast", "Neerslagstaat"],
+  "Middagdienst (15:00–22:00 LT)": [],
+  "Nachtdienst (22:00–08:00 LT)": ["Tabular forecast"],
+};
+
 export const NOTAM_SHIFTS = [...SHIFTS];
 
 // Verwachtingen die per shift uitgebracht kunnen worden (aanvinkopties in
@@ -132,6 +140,7 @@ export const EXPORT_TREE = [
     { id: "inst_radar", label: "RADAR" },
   ] },
   { id: "werkzaamheden", label: "Werkzaamheden", elements: [{ id: "werkzaamheden", label: "Werkzaamheden" }] },
+  { id: "gemailde_verwachtingen", label: "Gemailde Verwachtingen", elements: [{ id: "gemailde_verwachtingen", label: "Gemailde Verwachtingen" }] },
   { id: "webupload", label: "Web Upload", elements: [{ id: "webupload", label: "Web Upload" }] },
   { id: "notams", label: "NOTAMs", elements: [{ id: "notams", label: "NOTAMs" }] },
   { id: "logistiek", label: "Logistiek", elements: [

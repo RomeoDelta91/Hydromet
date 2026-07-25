@@ -24,6 +24,7 @@ const COLUMN_DEFS = [
   { id: "werkzaamheden", key: "onderhoud_notities", label: "Werkzaamheden-Onderhoud" },
   { id: "werkzaamheden", key: "spullen_ontvangen", label: "Spullen ontvangen" },
   { id: "werkzaamheden", key: "spullen_verzonden", label: "Spullen verzonden" },
+  { id: "gemailde_verwachtingen", key: "gemailde_verwachtingen", label: "Gemailde Verwachtingen" },
   { id: "webupload", key: "webupload", label: "Web Upload" },
   { id: "notams", key: "notams", label: "NOTAMs" },
   { id: "byz_dienstauto", key: "byz_dienstauto", label: "Dienstauto" },
@@ -73,6 +74,11 @@ function webUploadVoor(e) {
   return [...(e.wu_products || []), e.wu_anders && `Anders: ${e.wu_anders}`].filter(Boolean).join(", ");
 }
 
+function gemaildeVerwachtingenVoor(e) {
+  if (e.type !== "forecaster") return "";
+  return (e.gemailde_verwachtingen || []).join(", ");
+}
+
 function notamsVoor(e) {
   if (e.type !== "forecaster") return "";
   if (!e.notam_verzonden) return "Nee";
@@ -90,7 +96,7 @@ function rowsForEntry(e) {
     com_werkmobiel: e.com_werkmobiel ?? "", com_charger: e.com_charger ?? "",
     inst_conventioneel: e.inst_conventioneel ?? "", inst_aws: e.inst_aws ?? "", inst_awos: e.inst_awos ?? "",
     inst_pc_lhb: e.inst_pc_lhb ?? "", inst_radar: e.inst_radar ?? "",
-    webupload: webUploadVoor(e), notams: notamsVoor(e),
+    webupload: webUploadVoor(e), notams: notamsVoor(e), gemailde_verwachtingen: gemaildeVerwachtingenVoor(e),
     byz_dienstauto: e.byz_dienstauto ?? "", byz_dienstbus: e.byz_dienstbus ?? "", byz_hydrofoor: e.byz_hydrofoor ?? "",
     byz_stroom: e.byz_stroom ?? "", byz_swm: e.byz_swm ?? "", byz_maaiwerkzaamheden: e.byz_maaiwerkzaamheden ?? "",
     byz_toilet: e.byz_toilet ?? "",

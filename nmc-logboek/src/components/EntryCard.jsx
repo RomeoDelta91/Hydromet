@@ -55,6 +55,7 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
         {(isAdmin || isO) && ef("Onderhoudmedewerker", onderhoudNamen)}
         {isF && (e.verwachtingen_checks || []).length > 0 && ef("Verwachtingen uitgebracht", e.verwachtingen_checks)}
         {isF && ef("Anders (omschrijf)", e.verwachtingen)}
+        {isF && (e.gemailde_verwachtingen || []).length > 0 && ef("Gemailde Verwachtingen", e.gemailde_verwachtingen)}
         {isF && (e.wu_products?.length || e.wu_anders) && <div className="ef-block"><div className="ef-label">Web Upload</div><div className="ef-value">{[...(e.wu_products || []), e.wu_anders && `Anders: ${e.wu_anders}`].filter(Boolean).join(", ")}</div></div>}
         {isF && e.notam_verzonden && (
           <div className="ef-block">

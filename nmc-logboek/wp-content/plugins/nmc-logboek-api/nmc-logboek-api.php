@@ -345,6 +345,35 @@ function nmc_get_login_log_content(WP_REST_Request $req) {
     return new WP_REST_Response(file_get_contents($path), 200, ['Content-Type' => 'text/plain; charset=utf-8']);
 }
 
+// ---------------------------------------------------------------------------
+// Login-poging-limiet: na 5 mislukte pogingen wordt het account 15 minuten
+// geblokkeerd. Gebruikt WP-transients (self-expirend, geen aparte tabel nodig).
+// ---------------------------------------------------------------------------
+define('NMC_LOGIN_MAX_POGINGEN', 5);
+define('NMC_LOGIN_LOCKOUT_MINUTEN', 15);
+
+function nmc_login_fail_key($username)   { return 'nmc_login_fails_' . md5($username); }
+function nmc_login_lockout_key($username) { return 'nmc_login_lockout_' . md5($username); }
+
+function nmc_login_is_locked($username) {
+    return get_transient(nmc_login_lockout_key($username)) !== false;
+}
+
+function nmc_login_register_fail($username) {
+    $key = nmc_login_fail_key($username);
+    $fails = (int) get_transient($key);
+    $fails++;
+    set_transient($key, $fails, NMC_LOGIN_LOCKOUT_MINUTEN * MINUTE_IN_SECONDS);
+    if ($fails >= NMC_LOGIN_MAX_POGINGEN) {
+        set_transient(nmc_login_lockout_key($username), 1, NMC_LOGIN_LOCKOUT_MINUTEN * MINUTE_IN_SECONDS);
+    }
+}
+
+function nmc_login_clear_fails($username) {
+    delete_transient(nmc_login_fail_key($username));
+    delete_transient(nmc_login_lockout_key($username));
+}
+
 function nmc_login(WP_REST_Request $req) {
     global $wpdb;
     $table = $wpdb->prefix . 'nmc_logboek_users';
@@ -356,15 +385,22 @@ function nmc_login(WP_REST_Request $req) {
         return rest_ensure_response(['success' => false, 'error' => 'Vul gebruikersnaam en wachtwoord in.']);
     }
 
+    if (nmc_login_is_locked($username)) {
+        nmc_log_login($username, '', '', 'GEBLOKKEERD');
+        return rest_ensure_response(['success' => false, 'error' => 'Te veel mislukte inlogpogingen. Probeer het over ' . NMC_LOGIN_LOCKOUT_MINUTEN . ' minuten opnieuw.']);
+    }
+
     $user = $wpdb->get_row($wpdb->prepare(
         "SELECT * FROM $table WHERE username=%s AND actief=1", $username
     ), ARRAY_A);
 
     if (!$user || !password_verify($password, $user['password_hash'])) {
+        nmc_login_register_fail($username);
         nmc_log_login($username, $user['naam'] ?? '', $user['role'] ?? '', 'MISLUKT');
         return rest_ensure_response(['success' => false, 'error' => 'Onjuiste gebruikersnaam of wachtwoord.']);
     }
 
+    nmc_login_clear_fails($username);
     nmc_log_login($username, $user['naam'], $user['role'], 'OK');
 
     return rest_ensure_response([

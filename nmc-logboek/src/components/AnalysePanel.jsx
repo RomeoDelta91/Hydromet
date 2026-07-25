@@ -208,6 +208,15 @@ export default function AnalysePanel() {
     return Object.entries(map).sort((a, b) => b[1] - a[1]).map(([p, n]) => ({ product: p, count: n }));
   }
 
+  function calcGemaildeVerwachtingen() {
+    if (!forecasters.length) return [];
+    const map = {};
+    forecasters.forEach(e => {
+      (e.gemailde_verwachtingen || []).forEach(p => { map[p] = (map[p] || 0) + 1; });
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).map(([p, n]) => ({ product: p, count: n }));
+  }
+
   function calcNotamStats() {
     if (!forecasters.length) return { totaal: 0, verzonden: 0, perShift: {} };
     let verzonden = 0;
@@ -297,6 +306,7 @@ export default function AnalysePanel() {
     { id: "wz_volledigheid", label: "Werkzaamheden – volledigheid per onderdeel (%)" },
     { id: "storingen_obs", label: "Storingen – Observers (per systeem)" },
     { id: "storingen_f", label: "Storingen – Forecasters (per systeem)" },
+    { id: "gemailde_verwachtingen", label: "Gemailde Verwachtingen (per product)" },
   ];
 
   function grafiekData(id) {
@@ -306,6 +316,7 @@ export default function AnalysePanel() {
       case "wz_volledigheid": return { data: wzStats.map(r => ({ label: r.label, value: r.pct })), color: "var(--green)", max: 100, unit: "%" };
       case "storingen_obs": return { data: storingenObs.map(r => ({ label: r.label, value: r.totaal })), color: "var(--danger)", max: undefined, unit: "" };
       case "storingen_f": return { data: storingenF.map(r => ({ label: r.label, value: r.totaal })), color: "var(--danger)", max: undefined, unit: "" };
+      case "gemailde_verwachtingen": return { data: gemaildeVerwachtingen.map(r => ({ label: r.product, value: r.count })), color: "var(--navyMid)", max: undefined, unit: "" };
       default: return { data: [], color: "var(--green)", max: undefined, unit: "" };
     }
   }
@@ -316,6 +327,7 @@ export default function AnalysePanel() {
   const storingenObs = calcStoringen(false);
   const storingenF = calcStoringen(true);
   const webUpload = calcWebUpload();
+  const gemaildeVerwachtingen = calcGemaildeVerwachtingen();
   const notamStats = calcNotamStats();
   const werktijdPerPersoon = calcWerktijdPerPersoon();
   const overlaps = calcOverlaps();
@@ -530,6 +542,26 @@ export default function AnalysePanel() {
                         <thead><tr><th>Product</th><th>Aantal keer geüpload</th><th>Frequentie</th></tr></thead>
                         <tbody>
                           {webUpload.map(r => (
+                            <tr key={r.product}>
+                              <td>{r.product}</td>
+                              <td>{r.count}</td>
+                              <td><Bar pct={Math.round(r.count / forecasters.length * 100)} color="ok" /></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+
+                <div className="a-card">
+                  <div className="a-card-head"><span>📧 Gemailde Verwachtingen per maand</span></div>
+                  <div className="a-card-body">
+                    {gemaildeVerwachtingen.length === 0 ? <div className="no-data">Geen gemailde verwachtingen geregistreerd.</div> : (
+                      <table className="a-table">
+                        <thead><tr><th>Product</th><th>Aantal keer gemaild</th><th>Frequentie</th></tr></thead>
+                        <tbody>
+                          {gemaildeVerwachtingen.map(r => (
                             <tr key={r.product}>
                               <td>{r.product}</td>
                               <td>{r.count}</td>

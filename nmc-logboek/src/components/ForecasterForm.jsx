@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { SHIFTS, SHIFT_CODES, NOTAM_SHIFTS, WEB_PRODUCTS, MAAIWERK_OPTS, VERWACHTINGEN_PER_SHIFT } from "../constants.js";
+import { SHIFTS, SHIFT_CODES, NOTAM_SHIFTS, WEB_PRODUCTS, MAAIWERK_OPTS, VERWACHTINGEN_PER_SHIFT, GEMAILDE_VERWACHTINGEN_PER_SHIFT } from "../constants.js";
 import { today, nowId } from "../utils.js";
 import { checkDuplicate } from "../api.js";
 import Field from "./ui/Field.jsx";
@@ -16,6 +16,7 @@ const DEF_F = {
   personen: [{ ...DEF_PERSOON_F }],
   verwachtingen_checks: [],
   verwachtingen: "",
+  gemailde_verwachtingen: [],
   com_telefoon: "OK",
   com_internet: "OK",
   com_amhs: "OK",
@@ -55,6 +56,7 @@ function normalizeInitial(initial) {
   if (!Array.isArray(merged.ziekmeldingen)) merged.ziekmeldingen = [];
   if (!Array.isArray(merged.aanvragen)) merged.aanvragen = [];
   if (!Array.isArray(merged.verwachtingen_checks)) merged.verwachtingen_checks = [];
+  if (!Array.isArray(merged.gemailde_verwachtingen)) merged.gemailde_verwachtingen = [];
   return merged;
 }
 
@@ -65,15 +67,18 @@ export default function ForecasterForm({ onSave, gebruiker, initial }) {
   const upd = (k, v) => setF(p => ({ ...p, [k]: v }));
 
   const verwachtingenOpts = f.shift && VERWACHTINGEN_PER_SHIFT[f.shift] ? VERWACHTINGEN_PER_SHIFT[f.shift] : [];
+  const gemaildeOpts = f.shift && GEMAILDE_VERWACHTINGEN_PER_SHIFT[f.shift] ? GEMAILDE_VERWACHTINGEN_PER_SHIFT[f.shift] : [];
 
-  // Als de shift wijzigt, laat alleen de aangevinkte verwachtingen staan die
-  // ook bij de nieuwe shift horen.
+  // Als de shift wijzigt, laat alleen de aangevinkte verwachtingen/gemailde
+  // producten staan die ook bij de nieuwe shift horen.
   useEffect(() => {
     setF(prev => {
       const opts = prev.shift && VERWACHTINGEN_PER_SHIFT[prev.shift] ? VERWACHTINGEN_PER_SHIFT[prev.shift] : [];
+      const gOpts = prev.shift && GEMAILDE_VERWACHTINGEN_PER_SHIFT[prev.shift] ? GEMAILDE_VERWACHTINGEN_PER_SHIFT[prev.shift] : [];
       const filtered = (prev.verwachtingen_checks || []).filter(v => opts.includes(v));
-      if (filtered.length === (prev.verwachtingen_checks || []).length) return prev;
-      return { ...prev, verwachtingen_checks: filtered };
+      const gFiltered = (prev.gemailde_verwachtingen || []).filter(v => gOpts.includes(v));
+      if (filtered.length === (prev.verwachtingen_checks || []).length && gFiltered.length === (prev.gemailde_verwachtingen || []).length) return prev;
+      return { ...prev, verwachtingen_checks: filtered, gemailde_verwachtingen: gFiltered };
     });
   }, [f.shift]);
 
@@ -199,6 +204,26 @@ export default function ForecasterForm({ onSave, gebruiker, initial }) {
           <StatusRow label="AWOS" field="inst_awos" val={f.inst_awos} onChange={upd} />
           <StatusRow label="PC LHB" field="inst_pc_lhb" val={f.inst_pc_lhb} onChange={upd} />
           <StatusRow label="RADAR" field="inst_radar" val={f.inst_radar} onChange={upd} />
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>📧 Gemailde Verwachtingen</span></div>
+        <div className="card-body">
+          {!f.shift && <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Selecteer eerst een Dienst.</p>}
+          {f.shift && gemaildeOpts.length === 0 && <p style={{ fontSize: 12, color: "var(--inkLo)" }}>Geen producten gemaild bij deze dienst.</p>}
+          {f.shift && gemaildeOpts.length > 0 && (
+            <div className="cb-row">
+              {gemaildeOpts.map(v => (
+                <label key={v} className={`cb-item${f.gemailde_verwachtingen.includes(v) ? " checked" : ""}`}>
+                  <input type="checkbox" checked={f.gemailde_verwachtingen.includes(v)} onChange={() => {
+                    const next = f.gemailde_verwachtingen.includes(v) ? f.gemailde_verwachtingen.filter(x => x !== v) : [...f.gemailde_verwachtingen, v];
+                    upd("gemailde_verwachtingen", next);
+                  }} />{v}
+                </label>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
