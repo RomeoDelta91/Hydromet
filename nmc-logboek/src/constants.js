@@ -151,6 +151,7 @@ export const EXPORT_TREE = [
     { id: "byz_swm", label: "Levering SWM water" },
     { id: "byz_maaiwerkzaamheden", label: "Maaiwerkzaamheden" },
     { id: "byz_toilet", label: "Toilet" },
+    { id: "byz_logistiek_anders", label: "Anders" },
   ] },
   { id: "operationeel", label: "Operationeel", elements: [
     { id: "byz_airlines", label: "Airlines" },

@@ -142,7 +142,7 @@ function bijzonderhedenSection(e, ids) {
   const fields = [
     ["byz_dienstauto", "Dienstauto"], ["byz_dienstbus", "Dienstbus"], ["byz_hydrofoor", "Hydrofoor"],
     ["byz_stroom", "Stroomonderbrekingen"], ["byz_swm", "Levering SWM water"], ["byz_maaiwerkzaamheden", "Maaiwerkzaamheden"],
-    ["byz_toilet", "Toilet"],
+    ["byz_toilet", "Toilet"], ["byz_logistiek_anders", "Anders"],
     ["byz_airlines", "Airlines"], ["byz_operations", "Operations"], ["byz_atc", "ATC"], ["byz_toren", "Toren"],
   ];
   const rows = fields.filter(([k]) => has(k) && e[k]).map(([k, l]) => kv(l, e[k]));

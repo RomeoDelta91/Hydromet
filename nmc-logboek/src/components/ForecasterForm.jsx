@@ -6,6 +6,8 @@ import Field from "./ui/Field.jsx";
 import StatusRow from "./ui/StatusRow.jsx";
 import Ziekmeldingen from "./ui/Ziekmeldingen.jsx";
 import Aanvragen from "./ui/Aanvragen.jsx";
+import Mededelingen from "./Mededelingen.jsx";
+import VorigeRecords from "./VorigeRecords.jsx";
 
 const DEF_PERSOON_F = { naam: "" };
 
@@ -37,6 +39,7 @@ const DEF_F = {
   byz_swm: "",
   byz_maaiwerkzaamheden: "",
   byz_toilet: "",
+  byz_logistiek_anders: "",
   ziekmeldingen: [],
   aanvragen: [],
   byz_airlines: "",
@@ -60,7 +63,7 @@ function normalizeInitial(initial) {
   return merged;
 }
 
-export default function ForecasterForm({ onSave, gebruiker, initial }) {
+export default function ForecasterForm({ onSave, gebruiker, initial, role }) {
   const [f, setF] = useState(() => normalizeInitial(initial));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -131,6 +134,10 @@ export default function ForecasterForm({ onSave, gebruiker, initial }) {
 
   return (
     <div className="section">
+      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+        <Mededelingen role={role} />
+        <VorigeRecords type="forecaster" />
+      </div>
       <div className="card">
         <div className="card-header"><span>📋 Basisgegevens</span></div>
         <div className="card-body">
@@ -286,6 +293,9 @@ export default function ForecasterForm({ onSave, gebruiker, initial }) {
                 {MAAIWERK_OPTS.map(o => <option key={o} value={o}>{o === "" ? "N.v.t." : o}</option>)}
               </select>
             </div>
+          </div>
+          <div className="field-grid single" style={{ marginTop: 8 }}>
+            <Field label="Anders" field="byz_logistiek_anders" val={f.byz_logistiek_anders} onChange={upd} type="textarea" />
           </div>
         </div>
       </div>

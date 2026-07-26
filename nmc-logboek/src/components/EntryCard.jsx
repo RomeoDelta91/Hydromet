@@ -91,6 +91,7 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
         })}
         {ef("Maaiwerkzaamheden", e.byz_maaiwerkzaamheden)}
         {ef("Toilet", e.byz_toilet)}
+        {ef("Logistiek – Anders", e.byz_logistiek_anders)}
         {(e.ziekmeldingen || []).length > 0 && (
           <div className="ef-block"><div className="ef-label">Ziektemeldingen</div><div className="ef-value">
             {e.ziekmeldingen.map((z, i) => `${[z.tijd, z.naam, z.periode].filter(Boolean).join(" — ")}`).filter(Boolean).join("\n")}

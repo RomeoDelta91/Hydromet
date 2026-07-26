@@ -1,6 +1,20 @@
 export const today = () => new Date().toISOString().slice(0, 10);
 export const nowId = () => Date.now().toString(36);
 
+// Geeft { van, tot } (maandag t/m zondag, YYYY-MM-DD) van de week waarin
+// `dateStr` valt.
+export function getWeekRange(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  const dag = d.getDay(); // 0 = zondag
+  const offsetMaandag = dag === 0 ? -6 : 1 - dag;
+  const maandag = new Date(d);
+  maandag.setDate(d.getDate() + offsetMaandag);
+  const zondag = new Date(maandag);
+  zondag.setDate(maandag.getDate() + 6);
+  const fmt = x => x.toISOString().slice(0, 10);
+  return { van: fmt(maandag), tot: fmt(zondag) };
+}
+
 // Suriname = UTC-3. "08:30" LT → "11:30" UTC
 export function ltToUtcMinutes(timeStr) {
   if (!timeStr) return null;

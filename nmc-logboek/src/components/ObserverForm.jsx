@@ -9,6 +9,8 @@ import InitialsBox from "./ui/InitialsBox.jsx";
 import RepeatText from "./ui/RepeatText.jsx";
 import Ziekmeldingen from "./ui/Ziekmeldingen.jsx";
 import Aanvragen from "./ui/Aanvragen.jsx";
+import Mededelingen from "./Mededelingen.jsx";
+import VorigeRecords from "./VorigeRecords.jsx";
 
 // De `*_init` velden zijn objects, gekeyed per tijdstip: { "12 UTC": "AB" }
 // zodat je per uur kunt zien wie het werk deed.
@@ -76,6 +78,7 @@ const DEF_O_SHIFT = {
   byz_swm: "",
   byz_maaiwerkzaamheden: "",
   byz_toilet: "",
+  byz_logistiek_anders: "",
   ziekmeldingen: [],
   aanvragen: [],
   byz_airlines: "",
@@ -138,7 +141,7 @@ function WzRow({ label, field_status, field_maand, field_init, val_status, val_m
   );
 }
 
-export default function ObserverForm({ onSave, gebruiker, initial }) {
+export default function ObserverForm({ onSave, gebruiker, initial, role }) {
   const [f, setF] = useState(() => normalizeInitial(initial));
   const [errors, setErrors] = useState({});
   const [activePersoonTab, setActivePersoonTab] = useState(0);
@@ -233,6 +236,10 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
 
   return (
     <div className="section">
+      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+        <Mededelingen role={role} />
+        <VorigeRecords type="observer" />
+      </div>
       <div className="card">
         <div className="card-header"><span>📋 Basisgegevens</span></div>
         <div className="card-body">
@@ -457,6 +464,9 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
                 {MAAIWERK_OPTS.map(o => <option key={o} value={o}>{o === "" ? "N.v.t." : o}</option>)}
               </select>
             </div>
+          </div>
+          <div className="field-grid single" style={{ marginTop: 8 }}>
+            <Field label="Anders" field="byz_logistiek_anders" val={f.byz_logistiek_anders} onChange={upd} type="textarea" />
           </div>
         </div>
       </div>
