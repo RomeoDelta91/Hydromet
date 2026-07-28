@@ -53,10 +53,12 @@ const DEF_O_SHIFT = {
   com_awos: "OK",
   com_werkmobiel: "OK",
   com_charger: "OK",
+  com_anders: "",
   inst_conventioneel: "OK",
   inst_aws: "OK",
   inst_awos: "OK",
   inst_radar: "OK",
+  inst_anders: "",
   wz_climate: "Niet gemaakt",
   wz_climate_maand: "",
   wz_climate_init: "",
@@ -235,7 +237,7 @@ export default function ObserverForm({ onSave, gebruiker, initial, editMode }) {
 
   return (
     <div className={`section${editMode ? " chef-edit-mode" : ""}`}>
-      {editMode && <div className="chef-edit-banner">✏ U bewerkt een bestaand logboek als chef/admin — de ingevoerde tekst wordt rood weergegeven zodat wijzigingen opvallen.</div>}
+      {editMode && <div className="chef-edit-banner">✏ U maakt een aantekening als chef/admin — de ingevoerde tekst wordt rood weergegeven zodat de aantekeningen opvallen.</div>}
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
         <VorigeRecords type="observer" />
       </div>
@@ -289,6 +291,9 @@ export default function ObserverForm({ onSave, gebruiker, initial, editMode }) {
           <StatusRow label="AWOS" field="com_awos" val={f.com_awos} onChange={upd} />
           <StatusRow label="Werkmobiel" field="com_werkmobiel" val={f.com_werkmobiel} onChange={upd} />
           <StatusRow label="Charger" field="com_charger" val={f.com_charger} onChange={upd} />
+          <div className="field-grid single" style={{ marginTop: 10 }}>
+            <Field label="Anders" field="com_anders" val={f.com_anders} onChange={upd} type="textarea" />
+          </div>
         </div>
       </div>
 
@@ -299,6 +304,9 @@ export default function ObserverForm({ onSave, gebruiker, initial, editMode }) {
           <StatusRow label="AWS" field="inst_aws" val={f.inst_aws} onChange={upd} />
           <StatusRow label="AWOS" field="inst_awos" val={f.inst_awos} onChange={upd} />
           <StatusRow label="RADAR" field="inst_radar" val={f.inst_radar} onChange={upd} />
+          <div className="field-grid single" style={{ marginTop: 10 }}>
+            <Field label="Anders" field="inst_anders" val={f.inst_anders} onChange={upd} type="textarea" />
+          </div>
         </div>
       </div>
 

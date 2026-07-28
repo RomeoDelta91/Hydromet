@@ -96,12 +96,13 @@ function administratieWerkSection(e) {
   return blocks;
 }
 
-function communicatieSection(e, commLabels) {
-  return [heading("Communicatie", HeadingLevel.HEADING_3), table(statusRows(commLabels, e))];
-}
-
-function instrumentenSection(e, instLabels) {
-  return [heading("Instrumenten", HeadingLevel.HEADING_3), table(statusRows(instLabels, e))];
+// `andersKey` is het vrije tekstveld ("Anders") dat onder de statusrijen komt
+// voor zaken die buiten de vaste categorieën vallen.
+function statusSection(titel, labels, e, ids, andersKey) {
+  const rows = statusRows(labels, e);
+  if (ids.includes(andersKey) && e[andersKey]) rows.push(kv("Anders", e[andersKey], chefOpts(e, andersKey)));
+  if (!rows.length) return [];
+  return [heading(titel, HeadingLevel.HEADING_3), table(rows)];
 }
 
 function werkzaamhedenSection(e) {
@@ -207,14 +208,16 @@ function entrySections(e, ids) {
   if (chefEditsVan(e).length) {
     blocks.push(new Paragraph({
       children: [new TextRun({
-        text: `Aangepast door chef: ${e.chef_edit_door || "—"}${e.chef_edit_datum ? ` · ${e.chef_edit_datum}` : ""} — gewijzigde velden staan in het rood.`,
+        text: `Aantekening door chef: ${e.chef_edit_door || "—"}${e.chef_edit_datum ? ` · ${String(e.chef_edit_datum).slice(0, 10)}` : ""} — Aantekeningen staan in het rood.`,
         color: CHEF_RED, bold: true, italics: true, size: 18,
       })],
     }));
   }
   if (sec("basis")) blocks.push(...basisgegevensSection(e));
-  if (Object.keys(commLabels).length) blocks.push(...communicatieSection(e, commLabels));
-  if (Object.keys(instLabels).length) blocks.push(...instrumentenSection(e, instLabels));
+  if (!isAdmin) {
+    blocks.push(...statusSection("Communicatie", commLabels, e, ids, "com_anders"));
+    blocks.push(...statusSection("Instrumenten", instLabels, e, ids, "inst_anders"));
+  }
   if (sec("werkzaamheden") && e.type === "observer") blocks.push(...werkzaamhedenSection(e));
   if (sec("werkzaamheden") && isAdmin) blocks.push(...administratieWerkSection(e));
   if (sec("gemailde_verwachtingen")) blocks.push(...gemaildeVerwachtingenSection(e));

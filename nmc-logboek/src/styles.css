@@ -70,6 +70,9 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 .modal-header{background:var(--navyMid);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;}
 .modal-header h3{font-size:14px;color:var(--green);font-family:'IBM Plex Mono',monospace;letter-spacing:.05em;text-transform:uppercase;margin:0;}
 .modal-body{padding:18px;max-height:70vh;overflow-y:auto;}
+.modal-box-wide{max-width:760px;}
+.records-feed{margin-top:6px;}
+.records-feed .entry-card{margin-bottom:12px;}
 .nav-extra-btn{background:transparent;border:1px solid var(--paperMid);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;color:var(--inkMid);cursor:pointer;font-family:'Inter',sans-serif;}
 .chef-edit-banner{background:#FDECEA;border:1px solid var(--danger);color:var(--danger);border-radius:8px;padding:10px 14px;font-size:12px;font-weight:600;margin-bottom:16px;}
 .chef-edit-mode input:not([type="checkbox"]):not([type="radio"]),

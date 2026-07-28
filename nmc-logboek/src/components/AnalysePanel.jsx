@@ -77,7 +77,7 @@ function Bar({ pct, color = "ok" }) {
   );
 }
 
-export default function AnalysePanel() {
+export default function AnalysePanel({ canExport = true }) {
   const [maand, setMaand] = useState(today().slice(0, 7));
   const [subTab, setSubTab] = useState("observer");
   const [grafiekId, setGrafiekId] = useState("ziekmeldingen");
@@ -660,11 +660,13 @@ export default function AnalysePanel() {
                     <button type="button" className={`chart-type-btn${grafiekType === "bar" ? " active" : ""}`} onClick={() => setGrafiekType("bar")}>📊 Staaf</button>
                     <button type="button" className={`chart-type-btn${grafiekType === "line" ? " active" : ""}`} onClick={() => setGrafiekType("line")}>📈 Lijn</button>
                   </div>
-                  <button
-                    type="button"
-                    className="btn btn-export"
-                    onClick={() => downloadSvgAsPng(chartRef.current, `NMC_Grafiek_${grafiekId}_${maand}.png`)}
-                  >💾 Opslaan als afbeelding</button>
+                  {canExport && (
+                    <button
+                      type="button"
+                      className="btn btn-export"
+                      onClick={() => downloadSvgAsPng(chartRef.current, `NMC_Grafiek_${grafiekId}_${maand}.png`)}
+                    >💾 Opslaan als afbeelding</button>
+                  )}
                 </div>
                 {grafiekType === "bar"
                   ? <BarChart ref={chartRef} {...grafiekData(grafiekId)} />

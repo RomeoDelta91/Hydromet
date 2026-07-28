@@ -48,7 +48,7 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
           <span style={{ fontSize: 11, color: "var(--inkLo)", fontWeight: 600 }}>{e.shift || "—"}</span>
           {e.shift_code && <span style={{ fontSize: 11, color: "var(--inkLo)", fontFamily: "IBM Plex Mono,monospace" }}>{e.shift_code}</span>}
           {storingen.length > 0 && <span className="badge badge-warn">⚠ Storing</span>}
-          {chefEdits.length > 0 && <span className="badge badge-chef">✏ Aangepast door chef</span>}
+          {chefEdits.length > 0 && <span className="badge badge-chef">✏ Aantekening chef</span>}
         </div>
         <div className="entry-actions">
           {onEdit && canEdit && <button className="btn btn-secondary" onClick={() => onEdit(e)}>Bewerk</button>}
@@ -95,6 +95,8 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
             </div>
           );
         })}
+        {ef("Communicatie – Anders", e.com_anders, "com_anders")}
+        {ef("Instrumenten – Anders", e.inst_anders, "inst_anders")}
         {ef("Maaiwerkzaamheden", e.byz_maaiwerkzaamheden, "byz_maaiwerkzaamheden")}
         {ef("Toilet", e.byz_toilet, "byz_toilet")}
         {ef("Logistiek – Anders", e.byz_logistiek_anders, "byz_logistiek_anders")}
@@ -112,7 +114,7 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
         {e.ingevuld_door && <div style={{ fontSize: 11, color: "var(--inkLo)", fontFamily: "IBM Plex Mono,monospace" }}>Ingevuld door: {e.ingevuld_door}</div>}
         {chefEdits.length > 0 && (
           <div style={{ fontSize: 11, color: "var(--danger)", fontFamily: "IBM Plex Mono,monospace", fontWeight: 600 }}>
-            Aangepast door chef: {e.chef_edit_door || "—"}{e.chef_edit_datum ? ` · ${e.chef_edit_datum}` : ""}
+            Aantekening door chef: {e.chef_edit_door || "—"}{e.chef_edit_datum ? ` · ${String(e.chef_edit_datum).slice(0, 10)}` : ""} — Aantekeningen staan in het rood.
           </div>
         )}
       </div>

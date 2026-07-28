@@ -20,7 +20,7 @@ function namenVan(e) {
   return uit;
 }
 
-export default function Overzicht({ canDelete, canEdit = true, showToast, gebruiker }) {
+export default function Overzicht({ canDelete, canEdit = true, canExport = true, showToast, gebruiker }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -96,7 +96,7 @@ export default function Overzicht({ canDelete, canEdit = true, showToast, gebrui
         ...updated,
         chef_edits: [...new Set([...(editing.chef_edits || []), ...gewijzigd])],
         chef_edit_door: gebruiker || "",
-        chef_edit_datum: new Date().toISOString().slice(0, 16).replace("T", " "),
+        chef_edit_datum: today(),
       } : updated;
       await updateEntry(payload.uuid || payload.id, payload);
       showToast?.("✓ Logboek bijgewerkt");
@@ -200,10 +200,13 @@ export default function Overzicht({ canDelete, canEdit = true, showToast, gebrui
         </div>
 
         <div style={{ marginTop: 14, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <button className="btn btn-export" onClick={() => exportDocx(visibleEntries, selectedIds, periodeNaam())}>⬇ Download Word (.docx)</button>
-          <button className="btn btn-export" onClick={() => exportXlsx(visibleEntries, periodeNaam(), selectedIds)}>⬇ Download Excel (.xlsx)</button>
+          {canExport && <>
+            <button className="btn btn-export" onClick={() => exportDocx(visibleEntries, selectedIds, periodeNaam())}>⬇ Download Word (.docx)</button>
+            <button className="btn btn-export" onClick={() => exportXlsx(visibleEntries, periodeNaam(), selectedIds)}>⬇ Download Excel (.xlsx)</button>
+          </>}
           <span style={{ fontSize: 12, color: "var(--inkLo)" }}>{visibleEntries.length} inzending{visibleEntries.length !== 1 ? "en" : ""} geselecteerd</span>
         </div>
+        {!canExport && <p style={{ fontSize: 12, color: "var(--inkLo)", marginTop: 8 }}>Downloaden is niet beschikbaar voor uw rol — u kunt de logboeken alleen bekijken.</p>}
       </div>
 
       {error && <div className="error-state">{error}</div>}

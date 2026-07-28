@@ -131,6 +131,7 @@ export const EXPORT_TREE = [
     { id: "com_awos", label: "AWOS" },
     { id: "com_werkmobiel", label: "Werkmobiel" },
     { id: "com_charger", label: "Charger" },
+    { id: "com_anders", label: "Anders" },
   ] },
   { id: "instrumenten", label: "Instrumenten", elements: [
     { id: "inst_conventioneel", label: "Conventioneel" },
@@ -138,6 +139,7 @@ export const EXPORT_TREE = [
     { id: "inst_awos", label: "AWOS" },
     { id: "inst_pc_lhb", label: "PC LHB" },
     { id: "inst_radar", label: "RADAR" },
+    { id: "inst_anders", label: "Anders" },
   ] },
   { id: "werkzaamheden", label: "Werkzaamheden", elements: [{ id: "werkzaamheden", label: "Werkzaamheden" }] },
   { id: "gemailde_verwachtingen", label: "Gemailde Verwachtingen", elements: [{ id: "gemailde_verwachtingen", label: "Gemailde Verwachtingen" }] },

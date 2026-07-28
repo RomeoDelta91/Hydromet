@@ -52,6 +52,8 @@ export default function App() {
   // Administratie mag het overzicht lezen en exporteren, maar niets bewerken of
   // verwijderen. Alleen chef/admin krijgen die knoppen.
   const canModify = role === "chef" || role === "admin";
+  // Viewer mag uitsluitend lezen: geen Word/Excel-download.
+  const canExport = role !== "viewer";
   const visibleTabs = tabsForRole(role);
 
   const header = (
@@ -101,8 +103,8 @@ export default function App() {
       {tab === "forecaster" && <ForecasterForm onSave={handleSaveForecaster} gebruiker={gebruiker} />}
       {tab === "observer" && <ObserverForm onSave={handleSaveForecaster} gebruiker={gebruiker} />}
       {tab === "administratie" && <AdministratieForm onSave={handleSaveForecaster} gebruiker={gebruiker} />}
-      {tab === "overzicht" && <Overzicht canDelete={canModify} canEdit={canModify} showToast={showToast} gebruiker={gebruiker} />}
-      {tab === "analyse" && <AnalysePanel />}
+      {tab === "overzicht" && <Overzicht canDelete={canModify} canEdit={canModify} canExport={canExport} showToast={showToast} gebruiker={gebruiker} />}
+      {tab === "analyse" && <AnalysePanel canExport={canExport} />}
       {tab === "beheer" && <UserAdmin showToast={showToast} />}
 
       <Toast message={toast} />

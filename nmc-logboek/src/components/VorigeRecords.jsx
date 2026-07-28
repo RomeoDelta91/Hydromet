@@ -1,19 +1,111 @@
 import { useState } from "react";
 import { getEntries } from "../api.js";
 import { today, getWeekRange } from "../utils.js";
-import { exportDocx } from "../export/exportDocx.js";
 
-// Elementen die forecasters/observers mogen terugroepen om na te gaan wat
-// een vorige shift heeft ingevuld — bewust een kleinere set dan het volledige
-// Overzicht (dat is voorbehouden aan chef/admin/administratie/viewer).
-const RECALL_IDS = [
-  "basis",
-  "com_telefoon", "com_internet", "com_amhs", "com_awos", "com_werkmobiel", "com_charger",
-  "inst_conventioneel", "inst_aws", "inst_awos", "inst_pc_lhb", "inst_radar",
-  "byz_dienstauto", "byz_dienstbus", "byz_hydrofoor", "byz_stroom", "byz_swm",
-  "byz_maaiwerkzaamheden", "byz_toilet", "byz_logistiek_anders",
-  "ziekmeldingen", "aanvragen", "byz_algemeen",
-];
+// Statusvelden per type; alleen afwijkingen (niet-OK) zijn interessant bij een
+// dienstoverdracht, de rest wordt als "Alles OK" samengevat.
+const COMM_LABELS = {
+  com_telefoon: "Telefoon", com_internet: "Internet", com_amhs: "AMHS", com_awos: "AWOS",
+  com_werkmobiel: "Werkmobiel", com_charger: "Charger",
+};
+const INST_LABELS = {
+  inst_conventioneel: "Conventioneel", inst_aws: "AWS", inst_awos: "AWOS",
+  inst_pc_lhb: "PC LHB", inst_radar: "RADAR",
+};
+const LOGISTIEK_LABELS = {
+  byz_dienstauto: "Dienstauto", byz_dienstbus: "Dienstbus", byz_hydrofoor: "Hydrofoor",
+  byz_stroom: "Stroomonderbrekingen", byz_swm: "Levering SWM water",
+  byz_maaiwerkzaamheden: "Maaiwerkzaamheden", byz_toilet: "Toilet", byz_logistiek_anders: "Anders",
+};
+
+// Leesweergave van één record. Uitsluitend de elementen die relevant zijn om na
+// te gaan wat de vorige shift heeft ingevuld — geen bewerk- of opslagopties.
+function RecordItem({ e }) {
+  const chefEdits = e.chef_edits || [];
+  const rood = key => (chefEdits.includes(key) ? " chef-changed" : "");
+  const namen = (e.personen || []).map(p => p.naam).filter(Boolean).join(", ") || e.meteoroloog || "—";
+
+  const statusBlok = (titel, labels, andersKey) => {
+    const afwijkingen = Object.entries(labels)
+      .filter(([k]) => e[k] !== undefined && e[k] !== "" && e[k] !== "OK")
+      .map(([k, l]) => `${l}: ${e[k]}`);
+    const anders = e[andersKey];
+    if (!afwijkingen.length && !anders) {
+      return <div className="ef-block"><div className="ef-label">{titel}</div><div className="ef-value">Alles OK</div></div>;
+    }
+    return (
+      <div className="ef-block">
+        <div className="ef-label">{titel}</div>
+        {afwijkingen.length > 0 && (
+          <div className={`ef-value${chefEdits.some(k => labels[k]) ? " chef-changed" : ""}`}>{afwijkingen.join("\n")}</div>
+        )}
+        {anders && <div className={`ef-value${rood(andersKey)}`} style={{ marginTop: afwijkingen.length ? 4 : 0 }}>Anders: {anders}</div>}
+      </div>
+    );
+  };
+
+  const tekstBlok = (titel, key) => {
+    if (!e[key]) return null;
+    return <div className="ef-block"><div className="ef-label">{titel}</div><div className={`ef-value${rood(key)}`}>{e[key]}</div></div>;
+  };
+
+  const logistiek = Object.entries(LOGISTIEK_LABELS).filter(([k]) => e[k]);
+  const ziek = (e.ziekmeldingen || []).filter(z => z.tijd || z.naam || z.periode);
+  const aanvr = (e.aanvragen || []).filter(a => a.type || a.naam || a.periode);
+
+  return (
+    <div className="entry-card">
+      <div className="entry-header">
+        <div className="entry-meta">
+          <span className={`badge badge-${e.type}`}>{e.type === "forecaster" ? "Forecaster" : "Observer"}</span>
+          <span className="entry-date">{e.datum}</span>
+          <span style={{ fontSize: 11, color: "var(--inkLo)", fontWeight: 600 }}>{e.shift || "—"}</span>
+          {e.shift_code && <span style={{ fontSize: 11, color: "var(--inkLo)", fontFamily: "IBM Plex Mono,monospace" }}>{e.shift_code}</span>}
+          {chefEdits.length > 0 && <span className="badge badge-chef">✏ Aantekening chef</span>}
+        </div>
+      </div>
+      <div className="entry-body">
+        <div className="ef-block">
+          <div className="ef-label">{e.type === "forecaster" ? "Meteoroloog" : "Adj.-meteorologen"}</div>
+          <div className={`ef-value${rood("personen")}`}>{namen}</div>
+        </div>
+        {statusBlok("Communicatie", COMM_LABELS, "com_anders")}
+        {statusBlok("Instrumenten", INST_LABELS, "inst_anders")}
+        {logistiek.length > 0 && (
+          <div className="ef-block">
+            <div className="ef-label">Logistiek</div>
+            <div className={`ef-value${chefEdits.some(k => LOGISTIEK_LABELS[k]) ? " chef-changed" : ""}`}>
+              {logistiek.map(([k, l]) => `${l}: ${e[k]}`).join("\n")}
+            </div>
+          </div>
+        )}
+        {ziek.length > 0 && (
+          <div className="ef-block">
+            <div className="ef-label">Ziektemeldingen</div>
+            <div className={`ef-value${rood("ziekmeldingen")}`}>
+              {ziek.map(z => [z.tijd, z.naam, z.periode].filter(Boolean).join(" — ")).join("\n")}
+            </div>
+          </div>
+        )}
+        {aanvr.length > 0 && (
+          <div className="ef-block">
+            <div className="ef-label">Aanvragen</div>
+            <div className={`ef-value${rood("aanvragen")}`}>
+              {aanvr.map(a => [a.type, a.naam, a.periode].filter(Boolean).join(" — ")).join("\n")}
+            </div>
+          </div>
+        )}
+        {tekstBlok("Algemene Bijzonderheden", "byz_algemeen")}
+        {e.ingevuld_door && <div style={{ fontSize: 11, color: "var(--inkLo)", fontFamily: "IBM Plex Mono,monospace" }}>Ingevuld door: {e.ingevuld_door}</div>}
+        {chefEdits.length > 0 && (
+          <div style={{ fontSize: 11, color: "var(--danger)", fontFamily: "IBM Plex Mono,monospace", fontWeight: 600 }}>
+            Aantekening door chef: {e.chef_edit_door || "—"}{e.chef_edit_datum ? ` · ${String(e.chef_edit_datum).slice(0, 10)}` : ""} — Aantekeningen staan in het rood.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function VorigeRecords({ type }) {
   const [open, setOpen] = useState(false);
@@ -27,30 +119,20 @@ export default function VorigeRecords({ type }) {
     setLoading(true);
     setResultaat(null);
     try {
-      let filters = { type };
-      let label;
+      const filters = { type };
       if (periode === "dag") {
         filters.datum = datum;
-        label = datum;
       } else if (periode === "week") {
         const { van, tot } = getWeekRange(datum);
         filters.van = van;
         filters.tot = tot;
-        label = `Week ${van} t-m ${tot}`;
       } else {
         filters.maand = maand;
-        label = maand;
       }
-      const entries = await getEntries(filters);
-      setResultaat({ entries, label });
+      setResultaat(await getEntries(filters));
     } finally {
       setLoading(false);
     }
-  };
-
-  const download = () => {
-    if (!resultaat || resultaat.entries.length === 0) return;
-    exportDocx(resultaat.entries, RECALL_IDS, `Vorige-Records_${resultaat.label}`);
   };
 
   return (
@@ -58,15 +140,14 @@ export default function VorigeRecords({ type }) {
       <button type="button" className="nav-extra-btn" onClick={() => setOpen(true)}>📄 Vorige Records</button>
       {open && (
         <div className="modal-overlay" onClick={() => setOpen(false)}>
-          <div className="modal-box" onClick={e => e.stopPropagation()}>
+          <div className="modal-box modal-box-wide" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>📄 Vorige Records opvragen</h3>
+              <h3>📄 Vorige Records</h3>
               <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Sluiten</button>
             </div>
             <div className="modal-body">
               <p style={{ fontSize: 12, color: "var(--inkLo)", marginBottom: 12 }}>
-                Roep eerdere invoer van uw eigen sectie op om na te gaan wat de vorige shift heeft ingevuld.
-                Bevat: Naam, Dienst, Shift, Communicatie, Instrumenten, Logistiek, Ziektemeldingen, Aanvragen en Algemene Bijzonderheden.
+                Lees terug wat een vorige shift heeft ingevuld. Alleen-lezen — er is geen downloadoptie.
               </p>
               <div className="field-grid">
                 <div className="field">
@@ -90,19 +171,19 @@ export default function VorigeRecords({ type }) {
                 )}
               </div>
               <button type="button" className="btn btn-secondary" onClick={zoek} disabled={loading}>
-                {loading ? "Zoeken…" : "🔍 Zoeken"}
+                {loading ? "Laden…" : "🔍 Toon records"}
               </button>
 
               {resultaat && (
-                <div style={{ marginTop: 16 }}>
-                  <p style={{ fontSize: 13, color: "var(--ink)" }}>
-                    {resultaat.entries.length === 0
-                      ? "Geen records gevonden voor deze periode."
-                      : `${resultaat.entries.length} record(en) gevonden.`}
-                  </p>
-                  {resultaat.entries.length > 0 && (
-                    <button type="button" className="btn btn-export" onClick={download}>⬇ Download Word</button>
-                  )}
+                <div className="records-feed">
+                  {resultaat.length === 0
+                    ? <p style={{ fontSize: 13, color: "var(--inkLo)" }}>Geen records gevonden voor deze periode.</p>
+                    : <>
+                        <p style={{ fontSize: 12, color: "var(--inkLo)", margin: "14px 0 8px" }}>
+                          {resultaat.length} record{resultaat.length !== 1 ? "s" : ""} — nieuwste bovenaan
+                        </p>
+                        {resultaat.map(e => <RecordItem key={e.uuid || e.id} e={e} />)}
+                      </>}
                 </div>
               )}
             </div>

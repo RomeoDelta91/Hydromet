@@ -22,10 +22,12 @@ const DEF_F = {
   com_internet: "OK",
   com_amhs: "OK",
   com_awos: "OK",
+  com_anders: "",
   inst_aws: "OK",
   inst_awos: "OK",
   inst_pc_lhb: "OK",
   inst_radar: "OK",
+  inst_anders: "",
   wu_products: [],
   wu_anders: "",
   notam_verzonden: false,
@@ -133,7 +135,7 @@ export default function ForecasterForm({ onSave, gebruiker, initial, editMode })
 
   return (
     <div className={`section${editMode ? " chef-edit-mode" : ""}`}>
-      {editMode && <div className="chef-edit-banner">✏ U bewerkt een bestaand logboek als chef/admin — de ingevoerde tekst wordt rood weergegeven zodat wijzigingen opvallen.</div>}
+      {editMode && <div className="chef-edit-banner">✏ U maakt een aantekening als chef/admin — de ingevoerde tekst wordt rood weergegeven zodat de aantekeningen opvallen.</div>}
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
         <VorigeRecords type="forecaster" />
       </div>
@@ -200,6 +202,9 @@ export default function ForecasterForm({ onSave, gebruiker, initial, editMode })
           <StatusRow label="Internet" field="com_internet" val={f.com_internet} onChange={upd} />
           <StatusRow label="AMHS" field="com_amhs" val={f.com_amhs} onChange={upd} />
           <StatusRow label="AWOS" field="com_awos" val={f.com_awos} onChange={upd} />
+          <div className="field-grid single" style={{ marginTop: 10 }}>
+            <Field label="Anders" field="com_anders" val={f.com_anders} onChange={upd} type="textarea" />
+          </div>
         </div>
       </div>
 
@@ -210,6 +215,9 @@ export default function ForecasterForm({ onSave, gebruiker, initial, editMode })
           <StatusRow label="AWOS" field="inst_awos" val={f.inst_awos} onChange={upd} />
           <StatusRow label="PC LHB" field="inst_pc_lhb" val={f.inst_pc_lhb} onChange={upd} />
           <StatusRow label="RADAR" field="inst_radar" val={f.inst_radar} onChange={upd} />
+          <div className="field-grid single" style={{ marginTop: 10 }}>
+            <Field label="Anders" field="inst_anders" val={f.inst_anders} onChange={upd} type="textarea" />
+          </div>
         </div>
       </div>
 
