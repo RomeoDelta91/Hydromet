@@ -6,7 +6,6 @@ import Field from "./ui/Field.jsx";
 import StatusRow from "./ui/StatusRow.jsx";
 import Ziekmeldingen from "./ui/Ziekmeldingen.jsx";
 import Aanvragen from "./ui/Aanvragen.jsx";
-import Mededelingen from "./Mededelingen.jsx";
 import VorigeRecords from "./VorigeRecords.jsx";
 
 const DEF_PERSOON_F = { naam: "" };
@@ -63,7 +62,7 @@ function normalizeInitial(initial) {
   return merged;
 }
 
-export default function ForecasterForm({ onSave, gebruiker, initial, role }) {
+export default function ForecasterForm({ onSave, gebruiker, initial }) {
   const [f, setF] = useState(() => normalizeInitial(initial));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -135,7 +134,6 @@ export default function ForecasterForm({ onSave, gebruiker, initial, role }) {
   return (
     <div className="section">
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-        <Mededelingen role={role} />
         <VorigeRecords type="forecaster" />
       </div>
       <div className="card">

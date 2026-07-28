@@ -9,7 +9,6 @@ import InitialsBox from "./ui/InitialsBox.jsx";
 import RepeatText from "./ui/RepeatText.jsx";
 import Ziekmeldingen from "./ui/Ziekmeldingen.jsx";
 import Aanvragen from "./ui/Aanvragen.jsx";
-import Mededelingen from "./Mededelingen.jsx";
 import VorigeRecords from "./VorigeRecords.jsx";
 
 // De `*_init` velden zijn objects, gekeyed per tijdstip: { "12 UTC": "AB" }
@@ -141,7 +140,7 @@ function WzRow({ label, field_status, field_maand, field_init, val_status, val_m
   );
 }
 
-export default function ObserverForm({ onSave, gebruiker, initial, role }) {
+export default function ObserverForm({ onSave, gebruiker, initial }) {
   const [f, setF] = useState(() => normalizeInitial(initial));
   const [errors, setErrors] = useState({});
   const [activePersoonTab, setActivePersoonTab] = useState(0);
@@ -237,7 +236,6 @@ export default function ObserverForm({ onSave, gebruiker, initial, role }) {
   return (
     <div className="section">
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-        <Mededelingen role={role} />
         <VorigeRecords type="observer" />
       </div>
       <div className="card">

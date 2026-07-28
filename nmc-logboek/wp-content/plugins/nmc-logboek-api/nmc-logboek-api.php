@@ -260,32 +260,6 @@ add_action('rest_api_init', function() {
         'callback'            => 'nmc_get_login_log_content',
         'permission_callback' => 'nmc_admin_required',
     ]);
-
-    // Mededelingen: iedereen die ingelogd is mag ze lezen, alleen chef/admin
-    // mogen ze aanmaken/bewerken/verwijderen.
-    register_rest_route($ns, '/mededelingen', [
-        'methods'             => 'GET',
-        'callback'            => 'nmc_get_mededelingen',
-        'permission_callback' => 'nmc_auth_required',
-    ]);
-
-    register_rest_route($ns, '/mededelingen', [
-        'methods'             => 'POST',
-        'callback'            => 'nmc_create_mededeling',
-        'permission_callback' => 'nmc_chef_required',
-    ]);
-
-    register_rest_route($ns, '/mededelingen/(?P<id>[a-zA-Z0-9-]+)', [
-        'methods'             => 'PUT',
-        'callback'            => 'nmc_update_mededeling',
-        'permission_callback' => 'nmc_chef_required',
-    ]);
-
-    register_rest_route($ns, '/mededelingen/(?P<id>[a-zA-Z0-9-]+)', [
-        'methods'             => 'DELETE',
-        'callback'            => 'nmc_delete_mededeling',
-        'permission_callback' => 'nmc_chef_required',
-    ]);
 });
 
 // ---------------------------------------------------------------------------
@@ -713,75 +687,6 @@ function nmc_check_duplicate(WP_REST_Request $req) {
     ));
 
     return rest_ensure_response(['exists' => (bool) $existing]);
-}
-
-// ---------------------------------------------------------------------------
-// Mededelingen: mededelingenbord voor personeelsupdates (verlof goed-/afgekeurd,
-// mededelingen van de chef, etc.). Opgeslagen als één JSON-array in wp_options
-// — net als het auth-secret — omdat het gaat om een klein aantal berichten en
-// er geen aparte tabel nodig is.
-// ---------------------------------------------------------------------------
-
-function nmc_get_mededelingen_raw() {
-    $raw = get_option('nmc_mededelingen', []);
-    return is_array($raw) ? $raw : [];
-}
-
-function nmc_get_mededelingen() {
-    $items = nmc_get_mededelingen_raw();
-    usort($items, function($a, $b) { return strcmp($b['datum'] ?? '', $a['datum'] ?? ''); });
-    return rest_ensure_response($items);
-}
-
-function nmc_create_mededeling(WP_REST_Request $req) {
-    $body = $req->get_json_params();
-    $tekst = trim($body['tekst'] ?? '');
-    if (!$tekst) {
-        return new WP_Error('missing_fields', 'Tekst is verplicht.', ['status' => 400]);
-    }
-    $user = nmc_current_user($req);
-    $items = nmc_get_mededelingen_raw();
-    $item = [
-        'id'     => wp_generate_uuid4(),
-        'tekst'  => sanitize_textarea_field($tekst),
-        'auteur' => $user['naam'] ?? '',
-        'datum'  => current_time('mysql'),
-    ];
-    $items[] = $item;
-    update_option('nmc_mededelingen', $items);
-    return rest_ensure_response($item);
-}
-
-function nmc_update_mededeling(WP_REST_Request $req) {
-    $id    = $req->get_param('id');
-    $body  = $req->get_json_params();
-    $tekst = trim($body['tekst'] ?? '');
-    if (!$tekst) {
-        return new WP_Error('missing_fields', 'Tekst is verplicht.', ['status' => 400]);
-    }
-    $items = nmc_get_mededelingen_raw();
-    $found = false;
-    foreach ($items as &$item) {
-        if ($item['id'] === $id) {
-            $item['tekst'] = sanitize_textarea_field($tekst);
-            $found = true;
-            break;
-        }
-    }
-    unset($item);
-    if (!$found) {
-        return new WP_Error('not_found', 'Mededeling niet gevonden.', ['status' => 404]);
-    }
-    update_option('nmc_mededelingen', $items);
-    return rest_ensure_response(['success' => true]);
-}
-
-function nmc_delete_mededeling(WP_REST_Request $req) {
-    $id    = $req->get_param('id');
-    $items = nmc_get_mededelingen_raw();
-    $next  = array_values(array_filter($items, function($item) use ($id) { return $item['id'] !== $id; }));
-    update_option('nmc_mededelingen', $next);
-    return rest_ensure_response(['success' => true]);
 }
 
 // ---------------------------------------------------------------------------

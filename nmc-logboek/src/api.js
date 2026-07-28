@@ -130,41 +130,6 @@ export async function deleteUser(id) {
   return res.json();
 }
 
-export async function getMededelingen() {
-  const res = await fetch(`${BASE}/mededelingen`, { headers: authHeaders() });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-export async function createMededeling(tekst) {
-  const res = await fetch(`${BASE}/mededelingen`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify({ tekst }),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-export async function updateMededeling(id, tekst) {
-  const res = await fetch(`${BASE}/mededelingen/${id}`, {
-    method: "PUT",
-    headers: authHeaders(),
-    body: JSON.stringify({ tekst }),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-export async function deleteMededeling(id) {
-  const res = await fetch(`${BASE}/mededelingen/${id}`, {
-    method: "DELETE",
-    headers: authHeaders(),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
 export async function getLoginLogs() {
   const res = await fetch(`${BASE}/logs`, { headers: authHeaders() });
   if (!res.ok) throw new Error(await res.text());

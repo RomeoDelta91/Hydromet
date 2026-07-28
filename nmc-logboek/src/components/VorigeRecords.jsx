@@ -7,6 +7,7 @@ import { exportDocx } from "../export/exportDocx.js";
 // een vorige shift heeft ingevuld — bewust een kleinere set dan het volledige
 // Overzicht (dat is voorbehouden aan chef/admin/administratie/viewer).
 const RECALL_IDS = [
+  "basis",
   "com_telefoon", "com_internet", "com_amhs", "com_awos", "com_werkmobiel", "com_charger",
   "inst_conventioneel", "inst_aws", "inst_awos", "inst_pc_lhb", "inst_radar",
   "byz_dienstauto", "byz_dienstbus", "byz_hydrofoor", "byz_stroom", "byz_swm",
@@ -65,7 +66,7 @@ export default function VorigeRecords({ type }) {
             <div className="modal-body">
               <p style={{ fontSize: 12, color: "var(--inkLo)", marginBottom: 12 }}>
                 Roep eerdere invoer van uw eigen sectie op om na te gaan wat de vorige shift heeft ingevuld.
-                Bevat: Communicatie, Instrumenten, Logistiek, Ziektemeldingen, Aanvragen en Algemene Bijzonderheden.
+                Bevat: Naam, Dienst, Shift, Communicatie, Instrumenten, Logistiek, Ziektemeldingen, Aanvragen en Algemene Bijzonderheden.
               </p>
               <div className="field-grid">
                 <div className="field">
