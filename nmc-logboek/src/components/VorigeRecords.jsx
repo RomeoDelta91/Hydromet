@@ -22,7 +22,18 @@ const LOGISTIEK_LABELS = {
 // te gaan wat de vorige shift heeft ingevuld — geen bewerk- of opslagopties.
 function RecordItem({ e }) {
   const chefEdits = e.chef_edits || [];
-  const rood = key => (chefEdits.includes(key) ? " chef-changed" : "");
+  const correctieVelden = e.correctie_velden || [];
+  // Rood = aantekening chef, oranje = eigen correctie; chef weegt het zwaarst.
+  const rood = key => {
+    if (chefEdits.includes(key)) return " chef-changed";
+    if (correctieVelden.includes(key)) return " correctie-changed";
+    return "";
+  };
+  const groepMark = labels => {
+    if (chefEdits.some(k => labels[k])) return " chef-changed";
+    if (correctieVelden.some(k => labels[k])) return " correctie-changed";
+    return "";
+  };
   const namen = (e.personen || []).map(p => p.naam).filter(Boolean).join(", ") || e.meteoroloog || "—";
 
   const statusBlok = (titel, labels, andersKey) => {
@@ -37,7 +48,7 @@ function RecordItem({ e }) {
       <div className="ef-block">
         <div className="ef-label">{titel}</div>
         {afwijkingen.length > 0 && (
-          <div className={`ef-value${chefEdits.some(k => labels[k]) ? " chef-changed" : ""}`}>{afwijkingen.join("\n")}</div>
+          <div className={`ef-value${groepMark(labels)}`}>{afwijkingen.join("\n")}</div>
         )}
         {anders && <div className={`ef-value${rood(andersKey)}`} style={{ marginTop: afwijkingen.length ? 4 : 0 }}>Anders: {anders}</div>}
       </div>
@@ -62,6 +73,7 @@ function RecordItem({ e }) {
           <span style={{ fontSize: 11, color: "var(--inkLo)", fontWeight: 600 }}>{e.shift || "—"}</span>
           {e.shift_code && <span style={{ fontSize: 11, color: "var(--inkLo)", fontFamily: "IBM Plex Mono,monospace" }}>{e.shift_code}</span>}
           {chefEdits.length > 0 && <span className="badge badge-chef">✏ Aantekening chef</span>}
+          {chefEdits.length === 0 && correctieVelden.length > 0 && <span className="badge badge-correctie">✏ Gecorrigeerd</span>}
         </div>
       </div>
       <div className="entry-body">
@@ -74,7 +86,7 @@ function RecordItem({ e }) {
         {logistiek.length > 0 && (
           <div className="ef-block">
             <div className="ef-label">Logistiek</div>
-            <div className={`ef-value${chefEdits.some(k => LOGISTIEK_LABELS[k]) ? " chef-changed" : ""}`}>
+            <div className={`ef-value${groepMark(LOGISTIEK_LABELS)}`}>
               {logistiek.map(([k, l]) => `${l}: ${e[k]}`).join("\n")}
             </div>
           </div>
@@ -97,6 +109,14 @@ function RecordItem({ e }) {
         )}
         {tekstBlok("Algemene Bijzonderheden", "byz_algemeen")}
         {e.ingevuld_door && <div style={{ fontSize: 11, color: "var(--inkLo)", fontFamily: "IBM Plex Mono,monospace" }}>Ingevuld door: {e.ingevuld_door}</div>}
+        {correctieVelden.length > 0 && (() => {
+          const laatste = (e.correcties || [])[(e.correcties || []).length - 1];
+          return (
+            <div style={{ fontSize: 11, color: "var(--warn)", fontFamily: "IBM Plex Mono,monospace", fontWeight: 600 }}>
+              Gecorrigeerd door {laatste?.door || e.ingevuld_door || "—"}{laatste?.tijdstip ? ` · ${laatste.tijdstip}` : ""} — correcties staan in het oranje.
+            </div>
+          );
+        })()}
         {chefEdits.length > 0 && (
           <div style={{ fontSize: 11, color: "var(--danger)", fontFamily: "IBM Plex Mono,monospace", fontWeight: 600 }}>
             Aantekening door chef: {e.chef_edit_door || "—"}{e.chef_edit_datum ? ` · ${String(e.chef_edit_datum).slice(0, 10)}` : ""} — Aantekeningen staan in het rood.

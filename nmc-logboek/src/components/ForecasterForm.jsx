@@ -64,7 +64,7 @@ function normalizeInitial(initial) {
   return merged;
 }
 
-export default function ForecasterForm({ onSave, gebruiker, initial, editMode }) {
+export default function ForecasterForm({ onSave, gebruiker, initial, editMode, correctieMode }) {
   const [f, setF] = useState(() => normalizeInitial(initial));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -134,7 +134,8 @@ export default function ForecasterForm({ onSave, gebruiker, initial, editMode })
   const reqStyle = k => (errors[k] ? { borderColor: "var(--danger)" } : {});
 
   return (
-    <div className={`section${editMode ? " chef-edit-mode" : ""}`}>
+    <div className={`section${editMode ? " chef-edit-mode" : ""}${correctieMode ? " eigen-correctie-mode" : ""}`}>
+      {correctieMode && <div className="correctie-banner">✏ U corrigeert uw eigen invoer binnen het correctievenster. De oorspronkelijke versie blijft bewaard en de correctie wordt vastgelegd.</div>}
       {editMode && <div className="chef-edit-banner">✏ U maakt een aantekening als chef/admin — de ingevoerde tekst wordt rood weergegeven zodat de aantekeningen opvallen.</div>}
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
         <VorigeRecords type="forecaster" />
@@ -340,7 +341,7 @@ export default function ForecasterForm({ onSave, gebruiker, initial, editMode })
 
       <div className="ingevuld-bar">Ingevuld door: {gebruiker}</div>
       <button className="btn btn-primary" onClick={submit} disabled={saving} style={{ borderRadius: "0 0 8px 8px" }}>
-        {saving ? "Opslaan…" : "✅ Logboek opslaan"}
+        {saving ? "Opslaan…" : correctieMode ? "✅ Correctie opslaan" : "✅ Logboek opslaan"}
       </button>
       <div style={{ height: 16 }} />
     </div>

@@ -6,9 +6,16 @@ import {
 const BAD_STATUS = ["Storing", "Defect", "Uitgevallen"];
 // Rood voor velden die de chef/admin achteraf gewijzigd heeft.
 const CHEF_RED = "D94040";
+// Oranje voor een eigen correctie door de invoerder binnen het correctievenster.
+const CORRECTIE_ORANJE = "C87F0A";
 
 const chefEditsVan = e => e.chef_edits || [];
-const chefOpts = (e, key) => (chefEditsVan(e).includes(key) ? { color: CHEF_RED, bold: true } : {});
+// Rood (chef) weegt zwaarder dan oranje (eigen correctie) als een veld in beide staat.
+const chefOpts = (e, key) => {
+  if ((e.chef_edits || []).includes(key)) return { color: CHEF_RED, bold: true };
+  if ((e.correctie_velden || []).includes(key)) return { color: CORRECTIE_ORANJE, bold: true };
+  return {};
+};
 
 function cell(text, { bold = false, color, width } = {}) {
   return new TableCell({
@@ -38,8 +45,9 @@ function statusRows(labels, entry) {
   return Object.entries(labels).map(([key, label]) => {
     const val = entry[key];
     const bad = BAD_STATUS.includes(val);
-    const opts = chefEdits.includes(key)
-      ? { color: CHEF_RED, bold: true }
+    const gemarkeerd = chefOpts(entry, key);
+    const opts = Object.keys(gemarkeerd).length
+      ? gemarkeerd
       : bad ? { color: "C0392B", bold: true } : {};
     return new TableRow({
       children: [cell(label, { bold: true, width: 35 }), cell(val ?? "OK", opts)],
@@ -205,6 +213,15 @@ function entrySections(e, ids) {
       children: [new TextRun({ text: isAdmin ? `${e.datum} — ${typeLabel}` : `${e.datum} — ${e.shift} — ${typeLabel}` })],
     }),
   ];
+  if ((e.correctie_velden || []).length) {
+    const laatste = (e.correcties || [])[(e.correcties || []).length - 1];
+    blocks.push(new Paragraph({
+      children: [new TextRun({
+        text: `Gecorrigeerd door ${laatste?.door || e.ingevuld_door || "—"}${laatste?.tijdstip ? ` · ${laatste.tijdstip}` : ""} — correcties staan in het oranje.`,
+        color: CORRECTIE_ORANJE, bold: true, italics: true, size: 18,
+      })],
+    }));
+  }
   if (chefEditsVan(e).length) {
     blocks.push(new Paragraph({
       children: [new TextRun({

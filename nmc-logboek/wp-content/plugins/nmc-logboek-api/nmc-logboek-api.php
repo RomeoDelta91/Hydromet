@@ -97,12 +97,16 @@ function nmc_get_secret() {
     return $secret;
 }
 
+define('NMC_TOKEN_GELDIG_UREN', 12);
+
 function nmc_issue_token($user) {
     $payload = base64_encode(json_encode([
         'uid'  => (int) $user['id'],
         'naam' => $user['naam'],
         'role' => $user['role'],
-        'exp'  => time() + 7 * DAY_IN_SECONDS,
+        // Kort genoeg om één dienst te dekken: een achtergebleven of gelekt
+        // token is daarna vanzelf waardeloos.
+        'exp'  => time() + NMC_TOKEN_GELDIG_UREN * HOUR_IN_SECONDS,
     ]));
     $sig = hash_hmac('sha256', $payload, nmc_get_secret());
     return $payload . '.' . $sig;
@@ -196,6 +200,19 @@ add_action('rest_api_init', function() {
     register_rest_route($ns, '/logboek', [
         'methods'             => 'POST',
         'callback'            => 'nmc_post_logboek',
+        'permission_callback' => 'nmc_auth_required',
+    ]);
+
+    // Eigen invoer corrigeren binnen het correctievenster (forecaster/observer).
+    register_rest_route($ns, '/logboek/corrigeerbaar', [
+        'methods'             => 'GET',
+        'callback'            => 'nmc_get_corrigeerbaar',
+        'permission_callback' => 'nmc_auth_required',
+    ]);
+
+    register_rest_route($ns, '/logboek/(?P<uuid>[a-zA-Z0-9-]+)/correctie', [
+        'methods'             => 'POST',
+        'callback'            => 'nmc_correctie_logboek',
         'permission_callback' => 'nmc_auth_required',
     ]);
 
@@ -380,6 +397,145 @@ function nmc_login_register_fail($username) {
 function nmc_login_clear_fails($username) {
     delete_transient(nmc_login_fail_key($username));
     delete_transient(nmc_login_lockout_key($username));
+}
+
+// ---------------------------------------------------------------------------
+// Correctievenster: een forecaster/observer mag zijn eigen invoer nog een korte
+// tijd na het opslaan zelf corrigeren. Corrigeren is nadrukkelijk iets anders
+// dan overschrijven — de oorspronkelijke versie blijft bewaard en elke
+// correctie wordt gelogd, zodat er nooit iets ongemerkt verdwijnt.
+// ---------------------------------------------------------------------------
+define('NMC_CORRECTIE_MINUTEN', 30);
+
+// Meta-velden die niet meetellen als inhoudelijke wijziging.
+function nmc_diff_velden($oud, $nieuw) {
+    $skip = [
+        'id', 'uuid', 'ts', 'ts_created', 'ts_updated', 'deleted_at', 'data_json',
+        'type', 'ingevuld_door', 'chef_edits', 'chef_edit_door', 'chef_edit_datum',
+        'originele_versie', 'correcties', 'correctie_velden',
+    ];
+    $oud = is_array($oud) ? $oud : [];
+    $nieuw = is_array($nieuw) ? $nieuw : [];
+    $keys = array_unique(array_merge(array_keys($oud), array_keys($nieuw)));
+    $uit = [];
+    foreach ($keys as $k) {
+        if (in_array($k, $skip, true)) continue;
+        if (json_encode($oud[$k] ?? null) !== json_encode($nieuw[$k] ?? null)) $uit[] = $k;
+    }
+    return $uit;
+}
+
+// Geeft de eigen, nog corrigeerbare invoer terug (of null). Het venster wordt
+// volledig met de databaseklok berekend, zodat de klok van de computer van de
+// gebruiker geen invloed heeft.
+function nmc_get_corrigeerbaar(WP_REST_Request $req) {
+    global $wpdb;
+    $table = $wpdb->prefix . 'nmc_logboek';
+    $user  = nmc_current_user($req);
+
+    $type = $req->get_param('type');
+    if (in_array($user['role'], ['forecaster', 'observer'], true)) $type = $user['role'];
+    if (!$type) return rest_ensure_response(null);
+
+    $row = $wpdb->get_row($wpdb->prepare(
+        "SELECT *, TIMESTAMPDIFF(SECOND, ts_created, NOW()) AS verstreken
+         FROM $table
+         WHERE deleted_at IS NULL AND ingevuld_door = %s AND type = %s
+           AND ts_created >= DATE_SUB(NOW(), INTERVAL %d MINUTE)
+         ORDER BY ts_created DESC LIMIT 1",
+        $user['naam'], $type, NMC_CORRECTIE_MINUTEN
+    ), ARRAY_A);
+
+    if (!$row) return rest_ensure_response(null);
+
+    $data = json_decode($row['data_json'], true) ?: [];
+    // Heeft de chef al een aantekening gemaakt, dan is corrigeren niet meer
+    // toegestaan — anders zou de aantekening overschreven kunnen worden.
+    if (!empty($data['chef_edits'])) return rest_ensure_response(null);
+
+    $resterend = (NMC_CORRECTIE_MINUTEN * 60) - (int) $row['verstreken'];
+    return rest_ensure_response([
+        'uuid'               => $row['uuid'],
+        'datum'              => $row['datum'],
+        'shift'              => $row['shift'],
+        'opgeslagen'         => $row['ts_created'],
+        'resterend_seconden' => max(0, $resterend),
+        'entry'              => array_merge($data, ['uuid' => $row['uuid']]),
+    ]);
+}
+
+function nmc_correctie_logboek(WP_REST_Request $req) {
+    global $wpdb;
+    $table = $wpdb->prefix . 'nmc_logboek';
+    $uuid  = $req->get_param('uuid');
+    $user  = nmc_current_user($req);
+    $body  = $req->get_json_params();
+
+    $row = $wpdb->get_row($wpdb->prepare(
+        "SELECT *, (ts_created >= DATE_SUB(NOW(), INTERVAL %d MINUTE)) AS binnen_venster
+         FROM $table WHERE uuid = %s AND deleted_at IS NULL",
+        NMC_CORRECTIE_MINUTEN, $uuid
+    ), ARRAY_A);
+
+    if (!$row) return new WP_Error('not_found', 'Logboek niet gevonden.', ['status' => 404]);
+
+    if ((string) $row['ingevuld_door'] !== (string) $user['naam']) {
+        return new WP_Error('forbidden', 'U kunt alleen uw eigen invoer corrigeren.', ['status' => 403]);
+    }
+    if (!$row['binnen_venster']) {
+        return new WP_Error('venster_verstreken', 'Het correctievenster is verstreken. Vraag de chef om de aanpassing te doen.', ['status' => 403]);
+    }
+
+    $oud = json_decode($row['data_json'], true) ?: [];
+    if (!empty($oud['chef_edits'])) {
+        return new WP_Error('forbidden', 'De chef heeft een aantekening gemaakt; corrigeren is niet meer mogelijk.', ['status' => 403]);
+    }
+
+    $gewijzigd = nmc_diff_velden($oud, $body);
+    if (empty($gewijzigd)) return rest_ensure_response(['success' => true, 'gewijzigd' => []]);
+
+    $nieuw = $body;
+    // De oorspronkelijke versie wordt maar één keer vastgelegd: bij de eerste
+    // correctie. Latere correcties laten die ongemoeid.
+    $nieuw['originele_versie'] = $oud['originele_versie'] ?? $oud;
+
+    $correcties = (isset($oud['correcties']) && is_array($oud['correcties'])) ? $oud['correcties'] : [];
+    $correcties[] = [
+        'door'     => $user['naam'],
+        'tijdstip' => current_time('mysql'),
+        'velden'   => $gewijzigd,
+    ];
+    $nieuw['correcties'] = $correcties;
+
+    $eerder = (isset($oud['correctie_velden']) && is_array($oud['correctie_velden'])) ? $oud['correctie_velden'] : [];
+    $nieuw['correctie_velden'] = array_values(array_unique(array_merge($eerder, $gewijzigd)));
+
+    // Chef-aantekeningen mogen nooit via een correctie gezet of gewist worden.
+    foreach (['chef_edits', 'chef_edit_door', 'chef_edit_datum'] as $k) {
+        if (isset($oud[$k])) $nieuw[$k] = $oud[$k]; else unset($nieuw[$k]);
+    }
+
+    $meteoroloog = $row['type'] === 'forecaster'
+        ? ($nieuw['personen'][0]['naam'] ?? ($nieuw['meteoroloog'] ?? $row['meteoroloog']))
+        : ($nieuw['personen'][0]['naam'] ?? ($nieuw['administratie'][0] ?? $row['meteoroloog']));
+
+    // ts_created blijft ongemoeid: het venster is verankerd aan het oorspronkelijke
+    // opslagmoment en wordt dus niet verlengd door te blijven corrigeren.
+    $result = $wpdb->update($table, [
+        'datum'       => $nieuw['datum'] ?? $row['datum'],
+        'shift'       => $nieuw['shift'] ?? $row['shift'],
+        'meteoroloog' => $meteoroloog,
+        'data_json'   => json_encode($nieuw),
+        'ts_updated'  => current_time('mysql'),
+    ], ['uuid' => $uuid, 'deleted_at' => null]);
+
+    if ($result === false) return new WP_Error('db_error', $wpdb->last_error, ['status' => 500]);
+
+    if ($row['type'] === 'observer') {
+        nmc_sync_personen($row['id'], $nieuw['personen'] ?? []);
+    }
+
+    return rest_ensure_response(['success' => true, 'gewijzigd' => $gewijzigd]);
 }
 
 function nmc_login(WP_REST_Request $req) {

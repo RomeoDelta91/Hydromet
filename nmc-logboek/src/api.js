@@ -1,7 +1,7 @@
 const BASE = "/wp-json/nmc/v1";
 
 function getToken() {
-  return localStorage.getItem("nmc_jwt_token");
+  return sessionStorage.getItem("nmc_jwt_token");
 }
 
 function authHeaders() {
@@ -19,18 +19,45 @@ export async function login(username, password) {
   });
   const data = await res.json();
   if (data.success) {
-    localStorage.setItem("nmc_jwt_token", data.token);
-    localStorage.setItem("nmc_user_naam", data.naam);
-    localStorage.setItem("nmc_user_role", data.role);
+    sessionStorage.setItem("nmc_jwt_token", data.token);
+    sessionStorage.setItem("nmc_user_naam", data.naam);
+    sessionStorage.setItem("nmc_user_role", data.role);
     return { success: true, naam: data.naam, role: data.role };
   }
   return { success: false, error: data.error };
 }
 
 export function logout() {
-  localStorage.removeItem("nmc_jwt_token");
-  localStorage.removeItem("nmc_user_naam");
-  localStorage.removeItem("nmc_user_role");
+  sessionStorage.removeItem("nmc_jwt_token");
+  sessionStorage.removeItem("nmc_user_naam");
+  sessionStorage.removeItem("nmc_user_role");
+}
+
+// De sessie stond vroeger in localStorage en bleef daardoor ook na het sluiten
+// van de browser bestaan. Ruim die resten eenmalig op, zodat er nergens meer
+// een oud token blijft rondslingeren.
+export function ruimOudeSessieOp() {
+  ["nmc_jwt_token", "nmc_user_naam", "nmc_user_role"].forEach(k => localStorage.removeItem(k));
+}
+
+// Eigen, nog corrigeerbare invoer (of null als het venster verstreken is).
+export async function getCorrigeerbaar() {
+  const res = await fetch(`${BASE}/logboek/corrigeerbaar`, { headers: authHeaders() });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function corrigeerEntry(uuid, entry) {
+  const res = await fetch(`${BASE}/logboek/${uuid}/correctie`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(entry),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Corrigeren mislukt.");
+  }
+  return res.json();
 }
 
 export async function getUserRole() {

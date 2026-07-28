@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { TABS } from "./constants.js";
-import { logout as apiLogout, saveEntry } from "./api.js";
+import { logout as apiLogout, saveEntry, corrigeerEntry, getUserRole, ruimOudeSessieOp } from "./api.js";
 import LoginWithName from "./components/LoginWithName.jsx";
 import ForecasterForm from "./components/ForecasterForm.jsx";
 import ObserverForm from "./components/ObserverForm.jsx";
@@ -8,43 +8,104 @@ import AdministratieForm from "./components/AdministratieForm.jsx";
 import Overzicht from "./components/Overzicht.jsx";
 import AnalysePanel from "./components/AnalysePanel.jsx";
 import UserAdmin from "./components/UserAdmin.jsx";
+import EigenCorrectie from "./components/EigenCorrectie.jsx";
 import Toast from "./components/ui/Toast.jsx";
+
+// Automatisch uitloggen bij inactiviteit — het grootste risico op een gedeelde
+// werkplek is een scherm dat open blijft staan, niet een gesloten tabblad.
+const INACTIEF_UITLOG_MIN = 30;
+const INACTIEF_WAARSCHUW_MIN = 25;
 
 function tabsForRole(role) {
   return TABS.filter(t => t.roles.includes(role));
 }
 
 export default function App() {
-  const [gebruiker, setGebruiker] = useState(() => localStorage.getItem("nmc_user_naam") || "");
-  const [role, setRole] = useState(() => localStorage.getItem("nmc_user_role") || "");
-  const [tab, setTab] = useState(() => tabsForRole(localStorage.getItem("nmc_user_role") || "")[0]?.id || "");
+  const [gebruiker, setGebruiker] = useState(() => sessionStorage.getItem("nmc_user_naam") || "");
+  const [role, setRole] = useState(() => sessionStorage.getItem("nmc_user_role") || "");
+  const [tab, setTab] = useState(() => tabsForRole(sessionStorage.getItem("nmc_user_role") || "")[0]?.id || "");
   const [toast, setToast] = useState("");
+  const [correctie, setCorrectie] = useState(null);
+  const [verversToken, setVerversToken] = useState(0);
+  const [inactiefWaarschuwing, setInactiefWaarschuwing] = useState(false);
+  const laatsteActiviteit = useRef(Date.now());
 
   const showToast = useCallback(msg => {
     setToast(msg);
     setTimeout(() => setToast(""), 2500);
   }, []);
 
-  const handleLogin = (naam, loginRole) => {
-    setGebruiker(naam);
-    setRole(loginRole);
-    setTab(tabsForRole(loginRole)[0]?.id || "");
-  };
-
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     apiLogout();
     setGebruiker("");
     setRole("");
     setTab("");
+    setCorrectie(null);
+    setInactiefWaarschuwing(false);
+  }, []);
+
+  // Oude sessies stonden in localStorage en overleefden het sluiten van de
+  // browser; die resten worden hier eenmalig opgeruimd.
+  useEffect(() => { ruimOudeSessieOp(); }, []);
+
+  // Token is 12 uur geldig. Is die verlopen terwijl het tabblad open stond,
+  // dan hier meteen uitloggen in plaats van bij de eerste mislukte API-aanroep.
+  useEffect(() => {
+    if (!gebruiker) return;
+    getUserRole().then(r => { if (!r) handleLogout(); }).catch(() => {});
+  }, [gebruiker, handleLogout]);
+
+  const meldActiviteit = useCallback(() => {
+    laatsteActiviteit.current = Date.now();
+    setInactiefWaarschuwing(false);
+  }, []);
+
+  useEffect(() => {
+    if (!gebruiker) return;
+    const events = ["mousedown", "keydown", "touchstart", "scroll"];
+    events.forEach(e => window.addEventListener(e, meldActiviteit, { passive: true }));
+    const t = setInterval(() => {
+      const min = (Date.now() - laatsteActiviteit.current) / 60000;
+      if (min >= INACTIEF_UITLOG_MIN) {
+        handleLogout();
+        showToast("Automatisch uitgelogd wegens inactiviteit.");
+      } else if (min >= INACTIEF_WAARSCHUW_MIN) {
+        setInactiefWaarschuwing(true);
+      }
+    }, 15000);
+    return () => {
+      events.forEach(e => window.removeEventListener(e, meldActiviteit));
+      clearInterval(t);
+    };
+  }, [gebruiker, handleLogout, meldActiviteit, showToast]);
+
+  const handleLogin = (naam, loginRole) => {
+    setGebruiker(naam);
+    setRole(loginRole);
+    setTab(tabsForRole(loginRole)[0]?.id || "");
+    laatsteActiviteit.current = Date.now();
   };
 
   const handleSaveForecaster = async entry => {
     try {
       await saveEntry(entry);
       showToast("✓ Logboek opgeslagen");
+      setVerversToken(v => v + 1);
     } catch (err) {
       const msg = (err.message || "").replace(/^DUPLICATE:/, "");
       showToast(msg || "Opslaan mislukt.");
+      throw err;
+    }
+  };
+
+  const handleCorrectieSave = async entry => {
+    try {
+      await corrigeerEntry(entry.uuid || entry.id, entry);
+      showToast("✓ Correctie opgeslagen");
+      setCorrectie(null);
+      setVerversToken(v => v + 1);
+    } catch (err) {
+      showToast(err.message || "Corrigeren mislukt.");
       throw err;
     }
   };
@@ -88,20 +149,50 @@ export default function App() {
   const nav = (
     <div className="nav">
       {visibleTabs.map(t => (
-        <button key={t.id} className={`nav-tab${tab === t.id ? " active" : ""}`} onClick={() => setTab(t.id)}>
+        <button key={t.id} className={`nav-tab${tab === t.id ? " active" : ""}`} onClick={() => { setTab(t.id); setCorrectie(null); }}>
           {t.label}
         </button>
       ))}
     </div>
   );
 
+  // Forecaster- en observertab: bij een lopende correctie het formulier in
+  // correctiestand tonen, anders het correctieblok boven het lege formulier.
+  const formTab = (type, FormComp) => {
+    if (correctie && correctie.type === type) {
+      return (
+        <>
+          <button className="btn btn-secondary" style={{ marginBottom: 12 }} onClick={() => setCorrectie(null)}>
+            ← Correctie annuleren
+          </button>
+          <FormComp initial={correctie} gebruiker={gebruiker} onSave={handleCorrectieSave} correctieMode />
+        </>
+      );
+    }
+    return (
+      <>
+        <EigenCorrectie onStart={setCorrectie} verversToken={verversToken} />
+        <FormComp onSave={handleSaveForecaster} gebruiker={gebruiker} />
+      </>
+    );
+  };
+
   return (
     <div className="app-shell">
       {header}
       {nav}
 
-      {tab === "forecaster" && <ForecasterForm onSave={handleSaveForecaster} gebruiker={gebruiker} />}
-      {tab === "observer" && <ObserverForm onSave={handleSaveForecaster} gebruiker={gebruiker} />}
+      {inactiefWaarschuwing && (
+        <div className="inactief-banner">
+          U bent al een tijd niet actief. Over enkele minuten wordt u automatisch uitgelogd.
+          <button type="button" className="btn btn-secondary" style={{ marginLeft: 10 }} onClick={meldActiviteit}>
+            Ingelogd blijven
+          </button>
+        </div>
+      )}
+
+      {tab === "forecaster" && formTab("forecaster", ForecasterForm)}
+      {tab === "observer" && formTab("observer", ObserverForm)}
       {tab === "administratie" && <AdministratieForm onSave={handleSaveForecaster} gebruiker={gebruiker} />}
       {tab === "overzicht" && <Overzicht canDelete={canModify} canEdit={canModify} canExport={canExport} showToast={showToast} gebruiker={gebruiker} />}
       {tab === "analyse" && <AnalysePanel canExport={canExport} />}

@@ -32,11 +32,19 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
   // Velden die de chef/admin achteraf gewijzigd heeft, worden rood getoond
   // zodat ze opvallen t.o.v. de oorspronkelijke invoer van de shift.
   const chefEdits = e.chef_edits || [];
-  const isChefGewijzigd = key => key && chefEdits.includes(key);
+  const correctieVelden = e.correctie_velden || [];
+  // Rood = aantekening van de chef, oranje = eigen correctie van de invoerder.
+  // Staat een veld in beide, dan weegt de chef-aantekening het zwaarst.
+  const markKlasse = key => {
+    if (!key) return "";
+    if (chefEdits.includes(key)) return " chef-changed";
+    if (correctieVelden.includes(key)) return " correctie-changed";
+    return "";
+  };
 
   const ef = (label, val, key) => {
     if (!val || val === "" || val === "OK" || (Array.isArray(val) && val.length === 0)) return null;
-    return (<div className="ef-block"><div className="ef-label">{label}</div><div className={`ef-value${isChefGewijzigd(key) ? " chef-changed" : ""}`}>{Array.isArray(val) ? val.join(", ") : val}</div></div>);
+    return (<div className="ef-block"><div className="ef-label">{label}</div><div className={`ef-value${markKlasse(key)}`}>{Array.isArray(val) ? val.join(", ") : val}</div></div>);
   };
 
   return (
@@ -49,6 +57,7 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
           {e.shift_code && <span style={{ fontSize: 11, color: "var(--inkLo)", fontFamily: "IBM Plex Mono,monospace" }}>{e.shift_code}</span>}
           {storingen.length > 0 && <span className="badge badge-warn">⚠ Storing</span>}
           {chefEdits.length > 0 && <span className="badge badge-chef">✏ Aantekening chef</span>}
+          {chefEdits.length === 0 && correctieVelden.length > 0 && <span className="badge badge-correctie">✏ Gecorrigeerd</span>}
         </div>
         <div className="entry-actions">
           {onEdit && canEdit && <button className="btn btn-secondary" onClick={() => onEdit(e)}>Bewerk</button>}
@@ -101,17 +110,25 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
         {ef("Toilet", e.byz_toilet, "byz_toilet")}
         {ef("Logistiek – Anders", e.byz_logistiek_anders, "byz_logistiek_anders")}
         {(e.ziekmeldingen || []).length > 0 && (
-          <div className="ef-block"><div className="ef-label">Ziektemeldingen</div><div className={`ef-value${isChefGewijzigd("ziekmeldingen") ? " chef-changed" : ""}`}>
+          <div className="ef-block"><div className="ef-label">Ziektemeldingen</div><div className={`ef-value${markKlasse("ziekmeldingen")}`}>
             {e.ziekmeldingen.map((z, i) => `${[z.tijd, z.naam, z.periode].filter(Boolean).join(" — ")}`).filter(Boolean).join("\n")}
           </div></div>
         )}
         {(e.aanvragen || []).length > 0 && (
-          <div className="ef-block"><div className="ef-label">Aanvragen</div><div className={`ef-value${isChefGewijzigd("aanvragen") ? " chef-changed" : ""}`}>
+          <div className="ef-block"><div className="ef-label">Aanvragen</div><div className={`ef-value${markKlasse("aanvragen")}`}>
             {e.aanvragen.map(a => `${[a.type, a.naam, a.periode].filter(Boolean).join(" — ")}`).filter(Boolean).join("\n")}
           </div></div>
         )}
         {ef("Algemeen", e.byz_algemeen, "byz_algemeen")}
         {e.ingevuld_door && <div style={{ fontSize: 11, color: "var(--inkLo)", fontFamily: "IBM Plex Mono,monospace" }}>Ingevuld door: {e.ingevuld_door}</div>}
+        {correctieVelden.length > 0 && (() => {
+          const laatste = (e.correcties || [])[(e.correcties || []).length - 1];
+          return (
+            <div style={{ fontSize: 11, color: "var(--warn)", fontFamily: "IBM Plex Mono,monospace", fontWeight: 600 }}>
+              Gecorrigeerd door {laatste?.door || e.ingevuld_door || "—"}{laatste?.tijdstip ? ` · ${laatste.tijdstip}` : ""} — correcties staan in het oranje.
+            </div>
+          );
+        })()}
         {chefEdits.length > 0 && (
           <div style={{ fontSize: 11, color: "var(--danger)", fontFamily: "IBM Plex Mono,monospace", fontWeight: 600 }}>
             Aantekening door chef: {e.chef_edit_door || "—"}{e.chef_edit_datum ? ` · ${String(e.chef_edit_datum).slice(0, 10)}` : ""} — Aantekeningen staan in het rood.
