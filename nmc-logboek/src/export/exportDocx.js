@@ -4,6 +4,11 @@ import {
 } from "docx";
 
 const BAD_STATUS = ["Storing", "Defect", "Uitgevallen"];
+// Rood voor velden die de chef/admin achteraf gewijzigd heeft.
+const CHEF_RED = "D94040";
+
+const chefEditsVan = e => e.chef_edits || [];
+const chefOpts = (e, key) => (chefEditsVan(e).includes(key) ? { color: CHEF_RED, bold: true } : {});
 
 function cell(text, { bold = false, color, width } = {}) {
   return new TableCell({
@@ -29,11 +34,15 @@ function heading(text, level = HeadingLevel.HEADING_2) {
 }
 
 function statusRows(labels, entry) {
+  const chefEdits = chefEditsVan(entry);
   return Object.entries(labels).map(([key, label]) => {
     const val = entry[key];
     const bad = BAD_STATUS.includes(val);
+    const opts = chefEdits.includes(key)
+      ? { color: CHEF_RED, bold: true }
+      : bad ? { color: "C0392B", bold: true } : {};
     return new TableRow({
-      children: [cell(label, { bold: true, width: 35 }), cell(val ?? "OK", bad ? { color: "C0392B", bold: true } : {})],
+      children: [cell(label, { bold: true, width: 35 }), cell(val ?? "OK", opts)],
     });
   });
 }
@@ -145,7 +154,7 @@ function bijzonderhedenSection(e, ids) {
     ["byz_toilet", "Toilet"], ["byz_logistiek_anders", "Anders"],
     ["byz_airlines", "Airlines"], ["byz_operations", "Operations"], ["byz_atc", "ATC"], ["byz_toren", "Toren"],
   ];
-  const rows = fields.filter(([k]) => has(k) && e[k]).map(([k, l]) => kv(l, e[k]));
+  const rows = fields.filter(([k]) => has(k) && e[k]).map(([k, l]) => kv(l, e[k], chefOpts(e, k)));
   const blocks = [];
   if (rows.length) blocks.push(heading("Bijzonderheden", HeadingLevel.HEADING_3), table(rows));
 
@@ -169,7 +178,7 @@ function bijzonderhedenSection(e, ids) {
 
   if (has("byz_algemeen") && e.byz_algemeen) {
     blocks.push(new Paragraph({ text: "Algemeen", heading: HeadingLevel.HEADING_4 }));
-    blocks.push(new Paragraph({ text: e.byz_algemeen }));
+    blocks.push(new Paragraph({ children: [new TextRun({ text: e.byz_algemeen, ...chefOpts(e, "byz_algemeen") })] }));
   }
   return blocks;
 }
@@ -195,6 +204,14 @@ function entrySections(e, ids) {
       children: [new TextRun({ text: isAdmin ? `${e.datum} — ${typeLabel}` : `${e.datum} — ${e.shift} — ${typeLabel}` })],
     }),
   ];
+  if (chefEditsVan(e).length) {
+    blocks.push(new Paragraph({
+      children: [new TextRun({
+        text: `Aangepast door chef: ${e.chef_edit_door || "—"}${e.chef_edit_datum ? ` · ${e.chef_edit_datum}` : ""} — gewijzigde velden staan in het rood.`,
+        color: CHEF_RED, bold: true, italics: true, size: 18,
+      })],
+    }));
+  }
   if (sec("basis")) blocks.push(...basisgegevensSection(e));
   if (Object.keys(commLabels).length) blocks.push(...communicatieSection(e, commLabels));
   if (Object.keys(instLabels).length) blocks.push(...instrumentenSection(e, instLabels));

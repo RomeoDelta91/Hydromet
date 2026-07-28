@@ -72,11 +72,10 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 .modal-body{padding:18px;max-height:70vh;overflow-y:auto;}
 .nav-extra-btn{background:transparent;border:1px solid var(--paperMid);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;color:var(--inkMid);cursor:pointer;font-family:'Inter',sans-serif;}
 .chef-edit-banner{background:#FDECEA;border:1px solid var(--danger);color:var(--danger);border-radius:8px;padding:10px 14px;font-size:12px;font-weight:600;margin-bottom:16px;}
-.chef-edit-mode .field input,.chef-edit-mode .field select,.chef-edit-mode .field textarea,
-.chef-edit-mode .status-row select,.chef-edit-mode input[type="text"],.chef-edit-mode input[type="date"],
-.chef-edit-mode input[type="time"],.chef-edit-mode input[type="month"],.chef-edit-mode textarea,.chef-edit-mode select{
-  color:var(--danger)!important;font-weight:600;
-}
+.chef-edit-mode input:not([type="checkbox"]):not([type="radio"]),
+.chef-edit-mode select,.chef-edit-mode textarea{color:var(--danger)!important;font-weight:600;}
+.chef-changed .ef-value,.ef-value.chef-changed{color:var(--danger)!important;font-weight:600;}
+.badge-chef{background:var(--danger);color:#fff;}
 .nav-extra-btn:hover{opacity:.8;}
 @keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(12px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
 

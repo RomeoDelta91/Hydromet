@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { EXPORT_TREE, ALL_EXPORT_IDS } from "../constants.js";
-import { today } from "../utils.js";
+import { today, gewijzigdeVelden } from "../utils.js";
 import { getEntries, deleteEntry, updateEntry } from "../api.js";
 import EntryCard from "./EntryCard.jsx";
 import ForecasterForm from "./ForecasterForm.jsx";
@@ -20,7 +20,7 @@ function namenVan(e) {
   return uit;
 }
 
-export default function Overzicht({ canDelete, canEdit = true, showToast }) {
+export default function Overzicht({ canDelete, canEdit = true, showToast, gebruiker }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -86,9 +86,19 @@ export default function Overzicht({ canDelete, canEdit = true, showToast }) {
     }
   };
 
+  // Onthoud welke velden de chef/admin gewijzigd heeft, zodat die daarna
+  // blijvend rood getoond worden in het overzicht en de Word-export — ook voor
+  // forecasters/observers die het record later terugroepen.
   const handleEditSave = async updated => {
     try {
-      await updateEntry(updated.uuid || updated.id, updated);
+      const gewijzigd = gewijzigdeVelden(editing, updated);
+      const payload = gewijzigd.length ? {
+        ...updated,
+        chef_edits: [...new Set([...(editing.chef_edits || []), ...gewijzigd])],
+        chef_edit_door: gebruiker || "",
+        chef_edit_datum: new Date().toISOString().slice(0, 16).replace("T", " "),
+      } : updated;
+      await updateEntry(payload.uuid || payload.id, payload);
       showToast?.("✓ Logboek bijgewerkt");
       setEditing(null);
       load();

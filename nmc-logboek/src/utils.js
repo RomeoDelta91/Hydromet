@@ -1,6 +1,25 @@
 export const today = () => new Date().toISOString().slice(0, 10);
 export const nowId = () => Date.now().toString(36);
 
+// Technische/meta-velden die niet meetellen bij het bepalen wat de chef
+// inhoudelijk gewijzigd heeft.
+const DIFF_SKIP = new Set([
+  "id", "uuid", "ts", "ts_created", "ts_updated", "deleted_at", "data_json",
+  "type", "ingevuld_door", "chef_edits", "chef_edit_door", "chef_edit_datum",
+]);
+
+// Vergelijkt een bewerkte entry met het origineel en geeft de veldnamen terug
+// die inhoudelijk gewijzigd zijn, zodat die daarna rood getoond kunnen worden.
+export function gewijzigdeVelden(origineel, bewerkt) {
+  const keys = new Set([...Object.keys(origineel || {}), ...Object.keys(bewerkt || {})]);
+  const uit = [];
+  keys.forEach(k => {
+    if (DIFF_SKIP.has(k)) return;
+    if (JSON.stringify(origineel?.[k] ?? null) !== JSON.stringify(bewerkt?.[k] ?? null)) uit.push(k);
+  });
+  return uit;
+}
+
 // Geeft { van, tot } (maandag t/m zondag, YYYY-MM-DD) van de week waarin
 // `dateStr` valt.
 export function getWeekRange(dateStr) {

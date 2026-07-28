@@ -29,9 +29,14 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
   // Toont elk tijdstip met de bijbehorende initialen: "12 UTC (AB), 13 UTC (CD)".
   const fmtSlots = (arr, initMap) => (arr || []).map(t => `${t}${initMap?.[t] ? ` (${initMap[t]})` : ""}`).join(", ");
 
-  const ef = (label, val) => {
+  // Velden die de chef/admin achteraf gewijzigd heeft, worden rood getoond
+  // zodat ze opvallen t.o.v. de oorspronkelijke invoer van de shift.
+  const chefEdits = e.chef_edits || [];
+  const isChefGewijzigd = key => key && chefEdits.includes(key);
+
+  const ef = (label, val, key) => {
     if (!val || val === "" || val === "OK" || (Array.isArray(val) && val.length === 0)) return null;
-    return (<div className="ef-block"><div className="ef-label">{label}</div><div className="ef-value">{Array.isArray(val) ? val.join(", ") : val}</div></div>);
+    return (<div className="ef-block"><div className="ef-label">{label}</div><div className={`ef-value${isChefGewijzigd(key) ? " chef-changed" : ""}`}>{Array.isArray(val) ? val.join(", ") : val}</div></div>);
   };
 
   return (
@@ -43,6 +48,7 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
           <span style={{ fontSize: 11, color: "var(--inkLo)", fontWeight: 600 }}>{e.shift || "—"}</span>
           {e.shift_code && <span style={{ fontSize: 11, color: "var(--inkLo)", fontFamily: "IBM Plex Mono,monospace" }}>{e.shift_code}</span>}
           {storingen.length > 0 && <span className="badge badge-warn">⚠ Storing</span>}
+          {chefEdits.length > 0 && <span className="badge badge-chef">✏ Aangepast door chef</span>}
         </div>
         <div className="entry-actions">
           {onEdit && canEdit && <button className="btn btn-secondary" onClick={() => onEdit(e)}>Bewerk</button>}
@@ -50,12 +56,12 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
         </div>
       </div>
       <div className="entry-body">
-        {!isAdmin && ef(isF ? "Meteoroloog" : "Adj.-meteorologen", namen)}
-        {isAdmin && ef("Administratie", adminNamen)}
-        {(isAdmin || isO) && ef("Onderhoudmedewerker", onderhoudNamen)}
-        {isF && (e.verwachtingen_checks || []).length > 0 && ef("Verwachtingen uitgebracht", e.verwachtingen_checks)}
-        {isF && ef("Anders (omschrijf)", e.verwachtingen)}
-        {isF && (e.gemailde_verwachtingen || []).length > 0 && ef("Gemailde Verwachtingen", e.gemailde_verwachtingen)}
+        {!isAdmin && ef(isF ? "Meteoroloog" : "Adj.-meteorologen", namen, "personen")}
+        {isAdmin && ef("Administratie", adminNamen, "administratie")}
+        {(isAdmin || isO) && ef("Onderhoudmedewerker", onderhoudNamen, "onderhoud")}
+        {isF && (e.verwachtingen_checks || []).length > 0 && ef("Verwachtingen uitgebracht", e.verwachtingen_checks, "verwachtingen_checks")}
+        {isF && ef("Anders (omschrijf)", e.verwachtingen, "verwachtingen")}
+        {isF && (e.gemailde_verwachtingen || []).length > 0 && ef("Gemailde Verwachtingen", e.gemailde_verwachtingen, "gemailde_verwachtingen")}
         {isF && (e.wu_products?.length || e.wu_anders) && <div className="ef-block"><div className="ef-label">Web Upload</div><div className="ef-value">{[...(e.wu_products || []), e.wu_anders && `Anders: ${e.wu_anders}`].filter(Boolean).join(", ")}</div></div>}
         {isF && e.notam_verzonden && (
           <div className="ef-block">
@@ -66,11 +72,11 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
             </div>
           </div>
         )}
-        {storingen.length > 0 && <div className="ef-block" style={{ borderLeft: "3px solid var(--danger)" }}><div className="ef-label">Storingen / Defecten</div><div className="ef-value">{storingen.join("\n")}</div></div>}
-        {isAdmin && ef("Werkzaamheden-Admin", werkzaamhedenTekst)}
-        {isAdmin && ef("Werkzaamheden-Onderhoud", e.onderhoud_notities)}
-        {isAdmin && ef("Spullen ontvangen", e.spullen_ontvangen)}
-        {isAdmin && ef("Spullen verzonden", e.spullen_verzonden)}
+        {storingen.length > 0 && <div className="ef-block" style={{ borderLeft: "3px solid var(--danger)" }}><div className="ef-label">Storingen / Defecten</div><div className={`ef-value${chefEdits.some(k => k.startsWith("com_") || k.startsWith("inst_")) ? " chef-changed" : ""}`}>{storingen.join("\n")}</div></div>}
+        {isAdmin && ef("Werkzaamheden-Admin", werkzaamhedenTekst, "werkzaamheden")}
+        {isAdmin && ef("Werkzaamheden-Onderhoud", e.onderhoud_notities, "onderhoud_notities")}
+        {isAdmin && ef("Spullen ontvangen", e.spullen_ontvangen, "spullen_ontvangen")}
+        {isAdmin && ef("Spullen verzonden", e.spullen_verzonden, "spullen_verzonden")}
         {isO && (e.personen || []).map((p, idx) => {
           const heeftWz = (p.synop_gedaan?.length || p.synop_amhs_gedaan?.length || p.metar_gedaan?.length || p.klima_gedaan?.length || p.taf_gedaan?.length || p.digitaal_speci_gedaan || p.rr_gedaan);
           if (!heeftWz) return null;
@@ -89,21 +95,26 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
             </div>
           );
         })}
-        {ef("Maaiwerkzaamheden", e.byz_maaiwerkzaamheden)}
-        {ef("Toilet", e.byz_toilet)}
-        {ef("Logistiek – Anders", e.byz_logistiek_anders)}
+        {ef("Maaiwerkzaamheden", e.byz_maaiwerkzaamheden, "byz_maaiwerkzaamheden")}
+        {ef("Toilet", e.byz_toilet, "byz_toilet")}
+        {ef("Logistiek – Anders", e.byz_logistiek_anders, "byz_logistiek_anders")}
         {(e.ziekmeldingen || []).length > 0 && (
-          <div className="ef-block"><div className="ef-label">Ziektemeldingen</div><div className="ef-value">
+          <div className="ef-block"><div className="ef-label">Ziektemeldingen</div><div className={`ef-value${isChefGewijzigd("ziekmeldingen") ? " chef-changed" : ""}`}>
             {e.ziekmeldingen.map((z, i) => `${[z.tijd, z.naam, z.periode].filter(Boolean).join(" — ")}`).filter(Boolean).join("\n")}
           </div></div>
         )}
         {(e.aanvragen || []).length > 0 && (
-          <div className="ef-block"><div className="ef-label">Aanvragen</div><div className="ef-value">
+          <div className="ef-block"><div className="ef-label">Aanvragen</div><div className={`ef-value${isChefGewijzigd("aanvragen") ? " chef-changed" : ""}`}>
             {e.aanvragen.map(a => `${[a.type, a.naam, a.periode].filter(Boolean).join(" — ")}`).filter(Boolean).join("\n")}
           </div></div>
         )}
-        {ef("Algemeen", e.byz_algemeen)}
+        {ef("Algemeen", e.byz_algemeen, "byz_algemeen")}
         {e.ingevuld_door && <div style={{ fontSize: 11, color: "var(--inkLo)", fontFamily: "IBM Plex Mono,monospace" }}>Ingevuld door: {e.ingevuld_door}</div>}
+        {chefEdits.length > 0 && (
+          <div style={{ fontSize: 11, color: "var(--danger)", fontFamily: "IBM Plex Mono,monospace", fontWeight: 600 }}>
+            Aangepast door chef: {e.chef_edit_door || "—"}{e.chef_edit_datum ? ` · ${e.chef_edit_datum}` : ""}
+          </div>
+        )}
       </div>
     </div>
   );
