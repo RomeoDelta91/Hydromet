@@ -62,7 +62,7 @@ function normalizeInitial(initial) {
   return merged;
 }
 
-export default function ForecasterForm({ onSave, gebruiker, initial }) {
+export default function ForecasterForm({ onSave, gebruiker, initial, editMode }) {
   const [f, setF] = useState(() => normalizeInitial(initial));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -132,7 +132,8 @@ export default function ForecasterForm({ onSave, gebruiker, initial }) {
   const reqStyle = k => (errors[k] ? { borderColor: "var(--danger)" } : {});
 
   return (
-    <div className="section">
+    <div className={`section${editMode ? " chef-edit-mode" : ""}`}>
+      {editMode && <div className="chef-edit-banner">✏ U bewerkt een bestaand logboek als chef/admin — de ingevoerde tekst wordt rood weergegeven zodat wijzigingen opvallen.</div>}
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
         <VorigeRecords type="forecaster" />
       </div>

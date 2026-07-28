@@ -108,7 +108,7 @@ export default function Overzicht({ canDelete, canEdit = true, showToast }) {
     return (
       <div className="section">
         <button className="btn btn-secondary" style={{ marginBottom: 12 }} onClick={() => setEditing(null)}>← Terug naar overzicht</button>
-        <FormComp initial={editing} gebruiker={editing.ingevuld_door} onSave={handleEditSave} />
+        <FormComp initial={editing} gebruiker={editing.ingevuld_door} onSave={handleEditSave} editMode />
       </div>
     );
   }

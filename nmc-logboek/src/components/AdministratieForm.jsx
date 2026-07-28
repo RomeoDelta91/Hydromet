@@ -37,7 +37,7 @@ function normalizeInitial(initial) {
   return merged;
 }
 
-export default function AdministratieForm({ onSave, gebruiker, initial }) {
+export default function AdministratieForm({ onSave, gebruiker, initial, editMode }) {
   const [f, setF] = useState(() => normalizeInitial(initial));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -74,7 +74,8 @@ export default function AdministratieForm({ onSave, gebruiker, initial }) {
   const reqStyle = k => (errors[k] ? { borderColor: "var(--danger)" } : {});
 
   return (
-    <div className="section">
+    <div className={`section${editMode ? " chef-edit-mode" : ""}`}>
+      {editMode && <div className="chef-edit-banner">✏ U bewerkt een bestaand logboek als chef/admin — de ingevoerde tekst wordt rood weergegeven zodat wijzigingen opvallen.</div>}
       <div className="card">
         <div className="card-header"><span>📋 Basisgegevens</span></div>
         <div className="card-body">

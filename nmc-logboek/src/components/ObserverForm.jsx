@@ -140,7 +140,7 @@ function WzRow({ label, field_status, field_maand, field_init, val_status, val_m
   );
 }
 
-export default function ObserverForm({ onSave, gebruiker, initial }) {
+export default function ObserverForm({ onSave, gebruiker, initial, editMode }) {
   const [f, setF] = useState(() => normalizeInitial(initial));
   const [errors, setErrors] = useState({});
   const [activePersoonTab, setActivePersoonTab] = useState(0);
@@ -234,7 +234,8 @@ export default function ObserverForm({ onSave, gebruiker, initial }) {
   const tafTimesP = filterTijdenVoorPersoon(tafTimes, persoonActief.werktijd_van, persoonActief.werktijd_tot);
 
   return (
-    <div className="section">
+    <div className={`section${editMode ? " chef-edit-mode" : ""}`}>
+      {editMode && <div className="chef-edit-banner">✏ U bewerkt een bestaand logboek als chef/admin — de ingevoerde tekst wordt rood weergegeven zodat wijzigingen opvallen.</div>}
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
         <VorigeRecords type="observer" />
       </div>
