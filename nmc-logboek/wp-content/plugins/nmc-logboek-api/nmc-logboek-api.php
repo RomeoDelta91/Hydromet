@@ -558,16 +558,17 @@ function nmc_get_logboek(WP_REST_Request $req) {
     if ($req->get_param('maand'))  { $where[] = 'datum LIKE %s';       $params[] = $req->get_param('maand') . '-%'; }
     if ($req->get_param('van'))    { $where[] = 'datum >= %s';         $params[] = $req->get_param('van'); }
     if ($req->get_param('tot'))    { $where[] = 'datum <= %s';         $params[] = $req->get_param('tot'); }
-    if ($req->get_param('type'))   { $where[] = 'type = %s';           $params[] = $req->get_param('type'); }
 
-    // Forecasters/observers mogen via "Vorige Records" alleen entries van hun
-    // eigen sectie terugroepen — nooit de andere sectie, ongeacht de query.
+    // Forecasters/observers mogen via "Vorige Records" uitsluitend entries van
+    // hun eigen sectie terugroepen. Het type wordt dan door de server bepaald
+    // en een meegestuurd type-filter wordt genegeerd, zodat een forecaster ook
+    // met een aangepaste query nooit observer-entries kan opvragen (en omgekeerd).
     $user = nmc_current_user($req);
+    $type = $req->get_param('type');
     if ($user && in_array($user['role'], ['forecaster', 'observer'], true)) {
-        $where = array_values(array_filter($where, function($w) { return strpos($w, 'type =') === false; }));
-        $where[] = 'type = %s';
-        $params[] = $user['role'];
+        $type = $user['role'];
     }
+    if ($type) { $where[] = 'type = %s'; $params[] = $type; }
 
     $sql = "SELECT * FROM $table WHERE " . implode(' AND ', $where) . " ORDER BY datum DESC, ts_created DESC";
     if (!empty($params)) {
