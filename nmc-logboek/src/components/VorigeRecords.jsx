@@ -23,7 +23,7 @@ const LOGISTIEK_LABELS = {
 function RecordItem({ e }) {
   const chefEdits = e.chef_edits || [];
   const correctieVelden = e.correctie_velden || [];
-  // Rood = aantekening chef, oranje = eigen correctie; chef weegt het zwaarst.
+  // Rood = aantekening chef, groen = eigen correctie; chef weegt het zwaarst.
   const rood = key => {
     if (chefEdits.includes(key)) return " chef-changed";
     if (correctieVelden.includes(key)) return " correctie-changed";
@@ -112,8 +112,8 @@ function RecordItem({ e }) {
         {correctieVelden.length > 0 && (() => {
           const laatste = (e.correcties || [])[(e.correcties || []).length - 1];
           return (
-            <div style={{ fontSize: 11, color: "var(--warn)", fontFamily: "IBM Plex Mono,monospace", fontWeight: 600 }}>
-              Gecorrigeerd door {laatste?.door || e.ingevuld_door || "—"}{laatste?.tijdstip ? ` · ${laatste.tijdstip}` : ""} — correcties staan in het oranje.
+            <div style={{ fontSize: 11, color: "var(--correctie)", fontFamily: "IBM Plex Mono,monospace", fontWeight: 600 }}>
+              Gecorrigeerd door {laatste?.door || e.ingevuld_door || "—"}{laatste?.tijdstip ? ` · ${laatste.tijdstip}` : ""} — correcties staan in het groen.
             </div>
           );
         })()}

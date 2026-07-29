@@ -6,14 +6,14 @@ import {
 const BAD_STATUS = ["Storing", "Defect", "Uitgevallen"];
 // Rood voor velden die de chef/admin achteraf gewijzigd heeft.
 const CHEF_RED = "D94040";
-// Oranje voor een eigen correctie door de invoerder binnen het correctievenster.
-const CORRECTIE_ORANJE = "C87F0A";
+// Groen voor een eigen correctie door de invoerder binnen het correctievenster.
+const CORRECTIE_GROEN = "0B7A57";
 
 const chefEditsVan = e => e.chef_edits || [];
-// Rood (chef) weegt zwaarder dan oranje (eigen correctie) als een veld in beide staat.
+// Rood (chef) weegt zwaarder dan groen (eigen correctie) als een veld in beide staat.
 const chefOpts = (e, key) => {
   if ((e.chef_edits || []).includes(key)) return { color: CHEF_RED, bold: true };
-  if ((e.correctie_velden || []).includes(key)) return { color: CORRECTIE_ORANJE, bold: true };
+  if ((e.correctie_velden || []).includes(key)) return { color: CORRECTIE_GROEN, bold: true };
   return {};
 };
 
@@ -217,8 +217,8 @@ function entrySections(e, ids) {
     const laatste = (e.correcties || [])[(e.correcties || []).length - 1];
     blocks.push(new Paragraph({
       children: [new TextRun({
-        text: `Gecorrigeerd door ${laatste?.door || e.ingevuld_door || "—"}${laatste?.tijdstip ? ` · ${laatste.tijdstip}` : ""} — correcties staan in het oranje.`,
-        color: CORRECTIE_ORANJE, bold: true, italics: true, size: 18,
+        text: `Gecorrigeerd door ${laatste?.door || e.ingevuld_door || "—"}${laatste?.tijdstip ? ` · ${laatste.tijdstip}` : ""} — correcties staan in het groen.`,
+        color: CORRECTIE_GROEN, bold: true, italics: true, size: 18,
       })],
     }));
   }

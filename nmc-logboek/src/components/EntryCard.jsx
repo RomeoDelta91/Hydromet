@@ -33,7 +33,7 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
   // zodat ze opvallen t.o.v. de oorspronkelijke invoer van de shift.
   const chefEdits = e.chef_edits || [];
   const correctieVelden = e.correctie_velden || [];
-  // Rood = aantekening van de chef, oranje = eigen correctie van de invoerder.
+  // Rood = aantekening van de chef, groen = eigen correctie van de invoerder.
   // Staat een veld in beide, dan weegt de chef-aantekening het zwaarst.
   const markKlasse = key => {
     if (!key) return "";
@@ -124,8 +124,8 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
         {correctieVelden.length > 0 && (() => {
           const laatste = (e.correcties || [])[(e.correcties || []).length - 1];
           return (
-            <div style={{ fontSize: 11, color: "var(--warn)", fontFamily: "IBM Plex Mono,monospace", fontWeight: 600 }}>
-              Gecorrigeerd door {laatste?.door || e.ingevuld_door || "—"}{laatste?.tijdstip ? ` · ${laatste.tijdstip}` : ""} — correcties staan in het oranje.
+            <div style={{ fontSize: 11, color: "var(--correctie)", fontFamily: "IBM Plex Mono,monospace", fontWeight: 600 }}>
+              Gecorrigeerd door {laatste?.door || e.ingevuld_door || "—"}{laatste?.tijdstip ? ` · ${laatste.tijdstip}` : ""} — correcties staan in het groen.
             </div>
           );
         })()}
