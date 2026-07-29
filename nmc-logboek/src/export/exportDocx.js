@@ -2,6 +2,7 @@ import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   HeadingLevel, AlignmentType, WidthType, PageBreak, BorderStyle,
 } from "docx";
+import { chefAantekeningVelden } from "../utils.js";
 
 const BAD_STATUS = ["Storing", "Defect", "Uitgevallen"];
 // Rood voor velden die de chef/admin achteraf gewijzigd heeft.
@@ -15,10 +16,10 @@ const LEEG = "\u2014";
 const w = v => (v === undefined || v === null || v === "" ? LEEG : v);
 const lijst = v => (Array.isArray(v) && v.length ? v.join(", ") : LEEG);
 
-const chefEditsVan = e => e.chef_edits || [];
+const chefEditsVan = e => chefAantekeningVelden(e);
 // Rood (chef) weegt zwaarder dan groen (eigen correctie) als een veld in beide staat.
 const chefOpts = (e, key) => {
-  if ((e.chef_edits || []).includes(key)) return { color: CHEF_RED, bold: true };
+  if (chefEditsVan(e).includes(key)) return { color: CHEF_RED, bold: true };
   if ((e.correctie_velden || []).includes(key)) return { color: CORRECTIE_GROEN, bold: true };
   return {};
 };

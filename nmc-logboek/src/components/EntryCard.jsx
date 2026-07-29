@@ -1,4 +1,5 @@
 import { sectiesVoorEntry } from "../entryVelden.js";
+import { chefAantekeningVelden } from "../utils.js";
 
 // Toont één volledig logboek-record: elk kopstuk en elk veld, ook wanneer een
 // veld niet is ingevuld (dan blijft de waarde leeg) of op de standaardwaarde
@@ -8,7 +9,7 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
   const isF = e.type === "forecaster";
   const isAdmin = e.type === "administratie";
 
-  const chefEdits = e.chef_edits || [];
+  const chefEdits = chefAantekeningVelden(e);
   const correctieVelden = e.correctie_velden || [];
   // Rood = aantekening van de chef, groen = eigen correctie van de invoerder.
   // Staat een veld in beide, dan weegt de chef-aantekening het zwaarst.

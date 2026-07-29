@@ -1,6 +1,19 @@
 export const today = () => new Date().toISOString().slice(0, 10);
 export const nowId = () => Date.now().toString(36);
 
+// Een chef-aantekening is bedoeld voor de chef die het werk van een ander
+// aanpast. Staat de aantekening op naam van dezelfde persoon die het record
+// heeft ingevuld, dan is het geen aantekening maar gewoon eigen invoer — die
+// wordt genegeerd. Zo blijven ook records die eerder onterecht gestempeld zijn
+// vanaf nu schoon in beeld.
+export function chefAantekeningVelden(e) {
+  const velden = Array.isArray(e?.chef_edits) ? e.chef_edits : [];
+  if (!velden.length) return [];
+  const door = e.chef_edit_door || "";
+  if (door && door === (e.ingevuld_door || "")) return [];
+  return velden;
+}
+
 // Technische/meta-velden die niet meetellen bij het bepalen wat de chef
 // inhoudelijk gewijzigd heeft.
 const DIFF_SKIP = new Set([

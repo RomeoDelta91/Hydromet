@@ -407,6 +407,16 @@ function nmc_login_clear_fails($username) {
 // ---------------------------------------------------------------------------
 define('NMC_CORRECTIE_MINUTEN', 30);
 
+// Een chef-aantekening telt alleen als die door iemand anders is gezet dan
+// degene die het record heeft ingevuld. Zet de chef iets bij zijn eigen invoer,
+// dan is dat geen aantekening en blokkeert het het correctievenster niet.
+function nmc_heeft_chef_aantekening($data, $ingevuld_door) {
+    if (empty($data['chef_edits'])) return false;
+    $door = $data['chef_edit_door'] ?? '';
+    if ($door !== '' && $door === $ingevuld_door) return false;
+    return true;
+}
+
 // Meta-velden die niet meetellen als inhoudelijke wijziging.
 function nmc_diff_velden($oud, $nieuw) {
     $skip = [
@@ -451,7 +461,7 @@ function nmc_get_corrigeerbaar(WP_REST_Request $req) {
     $data = json_decode($row['data_json'], true) ?: [];
     // Heeft de chef al een aantekening gemaakt, dan is corrigeren niet meer
     // toegestaan — anders zou de aantekening overschreven kunnen worden.
-    if (!empty($data['chef_edits'])) return rest_ensure_response(null);
+    if (nmc_heeft_chef_aantekening($data, $row['ingevuld_door'])) return rest_ensure_response(null);
 
     $resterend = (NMC_CORRECTIE_MINUTEN * 60) - (int) $row['verstreken'];
     return rest_ensure_response([
@@ -487,7 +497,7 @@ function nmc_correctie_logboek(WP_REST_Request $req) {
     }
 
     $oud = json_decode($row['data_json'], true) ?: [];
-    if (!empty($oud['chef_edits'])) {
+    if (nmc_heeft_chef_aantekening($oud, $row['ingevuld_door'])) {
         return new WP_Error('forbidden', 'De chef heeft een aantekening gemaakt; corrigeren is niet meer mogelijk.', ['status' => 403]);
     }
 
