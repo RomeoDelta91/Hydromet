@@ -86,12 +86,17 @@ export default function Overzicht({ canDelete, canEdit = true, canExport = true,
     }
   };
 
+  // De rode aantekening is bedoeld voor de chef die het werk van een ander
+  // aanpast. Bewerkt de chef zijn eigen invoer — bijvoorbeeld een record dat
+  // hij zelf net heeft aangemaakt — dan blijft het record schoon.
+  const isEigenInvoer = entry => (entry?.ingevuld_door || "") === (gebruiker || "");
+
   // Onthoud welke velden de chef/admin gewijzigd heeft, zodat die daarna
   // blijvend rood getoond worden in het overzicht en de Word-export — ook voor
   // forecasters/observers die het record later terugroepen.
   const handleEditSave = async updated => {
     try {
-      const gewijzigd = gewijzigdeVelden(editing, updated);
+      const gewijzigd = isEigenInvoer(editing) ? [] : gewijzigdeVelden(editing, updated);
       const payload = gewijzigd.length ? {
         ...updated,
         chef_edits: [...new Set([...(editing.chef_edits || []), ...gewijzigd])],
@@ -118,7 +123,7 @@ export default function Overzicht({ canDelete, canEdit = true, canExport = true,
     return (
       <div className="section">
         <button className="btn btn-secondary" style={{ marginBottom: 12 }} onClick={() => setEditing(null)}>← Terug naar overzicht</button>
-        <FormComp initial={editing} gebruiker={editing.ingevuld_door} onSave={handleEditSave} editMode />
+        <FormComp initial={editing} gebruiker={editing.ingevuld_door} onSave={handleEditSave} editMode={!isEigenInvoer(editing)} />
       </div>
     );
   }
