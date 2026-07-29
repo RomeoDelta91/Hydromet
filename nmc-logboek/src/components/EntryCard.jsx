@@ -1,36 +1,13 @@
+import { sectiesVoorEntry } from "../entryVelden.js";
+
+// Toont één volledig logboek-record: elk kopstuk en elk veld, ook wanneer een
+// veld niet is ingevuld (dan blijft de waarde leeg) of op de standaardwaarde
+// "OK" staat. De velden komen uit entryVelden.js, zodat het Overzicht en de
+// leesweergave "Vorige Records" altijd hetzelfde tonen.
 export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = true }) {
   const isF = e.type === "forecaster";
   const isAdmin = e.type === "administratie";
-  const isO = e.type === "observer";
-  const storingen = isAdmin ? [] : [
-    e.com_telefoon !== "OK" && `Telefoon: ${e.com_telefoon}`,
-    e.com_internet !== "OK" && `Internet: ${e.com_internet}`,
-    e.com_amhs !== "OK" && `AMHS: ${e.com_amhs}`,
-    e.com_awos !== "OK" && `AWOS: ${e.com_awos}`,
-    isO && e.com_werkmobiel !== "OK" && `Werkmobiel: ${e.com_werkmobiel}`,
-    isO && e.com_charger !== "OK" && `Charger: ${e.com_charger}`,
-    e.inst_aws !== "OK" && `AWS: ${e.inst_aws}`,
-    e.inst_awos !== "OK" && `AWOS inst: ${e.inst_awos}`,
-    e.inst_radar !== "OK" && `RADAR: ${e.inst_radar}`,
-    isF && e.inst_pc_lhb !== "OK" && `PC LHB: ${e.inst_pc_lhb}`,
-    isO && e.inst_conventioneel !== "OK" && `Conventioneel: ${e.inst_conventioneel}`,
-  ].filter(Boolean);
 
-  const personenNamen = (e.personen || []).map(p => p.naam).filter(Boolean).join(", ");
-  const namen = isF ? (personenNamen || e.meteoroloog) : personenNamen;
-  const adminNamen = (e.administratie || []).filter(Boolean).join(", ");
-  const onderhoudNamen = (e.onderhoud || []).filter(Boolean).join(", ");
-  // Oudere administratie-entries hadden werkzaamheden als per-uur object i.p.v.
-  // één tekstveld; toon die nog netjes als er geen `werkzaamheden`-string is.
-  const werkzaamhedenTekst = typeof e.werkzaamheden === "string" && e.werkzaamheden
-    ? e.werkzaamheden
-    : Object.entries(e.werkzaamheden_per_uur || {}).filter(([, v]) => v).map(([uur, v]) => `${uur}: ${v}`).join("\n");
-
-  // Toont elk tijdstip met de bijbehorende initialen: "12 UTC (AB), 13 UTC (CD)".
-  const fmtSlots = (arr, initMap) => (arr || []).map(t => `${t}${initMap?.[t] ? ` (${initMap[t]})` : ""}`).join(", ");
-
-  // Velden die de chef/admin achteraf gewijzigd heeft, worden rood getoond
-  // zodat ze opvallen t.o.v. de oorspronkelijke invoer van de shift.
   const chefEdits = e.chef_edits || [];
   const correctieVelden = e.correctie_velden || [];
   // Rood = aantekening van de chef, groen = eigen correctie van de invoerder.
@@ -42,10 +19,17 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
     return "";
   };
 
-  const ef = (label, val, key) => {
-    if (!val || val === "" || val === "OK" || (Array.isArray(val) && val.length === 0)) return null;
-    return (<div className="ef-block"><div className="ef-label">{label}</div><div className={`ef-value${markKlasse(key)}`}>{Array.isArray(val) ? val.join(", ") : val}</div></div>);
-  };
+  const secties = sectiesVoorEntry(e);
+  const heeftStoring = secties.some(s => (s.rijen || []).some(r => r.waarschuwing));
+
+  const regel = (r, i) => (
+    <div className="ef-rij" key={`${r.key}-${r.label}-${i}`}>
+      <div className="ef-rij-label">{r.label}</div>
+      <div className={`ef-rij-waarde${r.waarde ? "" : " leeg"}${r.waarschuwing ? " storing" : ""}${markKlasse(r.key)}`}>
+        {r.waarde || "—"}
+      </div>
+    </div>
+  );
 
   return (
     <div className="entry-card">
@@ -55,7 +39,7 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
           <span className="entry-date">{e.datum}</span>
           <span style={{ fontSize: 11, color: "var(--inkLo)", fontWeight: 600 }}>{e.shift || "—"}</span>
           {e.shift_code && <span style={{ fontSize: 11, color: "var(--inkLo)", fontFamily: "IBM Plex Mono,monospace" }}>{e.shift_code}</span>}
-          {storingen.length > 0 && <span className="badge badge-warn">⚠ Storing</span>}
+          {heeftStoring && <span className="badge badge-warn">⚠ Storing</span>}
           {chefEdits.length > 0 && <span className="badge badge-chef">✏ Aantekening chef</span>}
           {chefEdits.length === 0 && correctieVelden.length > 0 && <span className="badge badge-correctie">✏ Gecorrigeerd</span>}
         </div>
@@ -64,73 +48,31 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
           {canDelete && <button className="btn btn-danger" onClick={() => onDelete(e.uuid || e.id)}>Wis</button>}
         </div>
       </div>
+
       <div className="entry-body">
-        {!isAdmin && ef(isF ? "Meteoroloog" : "Adj.-meteorologen", namen, "personen")}
-        {isAdmin && ef("Administratie", adminNamen, "administratie")}
-        {(isAdmin || isO) && ef("Onderhoudmedewerker", onderhoudNamen, "onderhoud")}
-        {isF && (e.verwachtingen_checks || []).length > 0 && ef("Verwachtingen uitgebracht", e.verwachtingen_checks, "verwachtingen_checks")}
-        {isF && ef("Anders (omschrijf)", e.verwachtingen, "verwachtingen")}
-        {isF && (e.gemailde_verwachtingen || []).length > 0 && ef("Gemailde Verwachtingen", e.gemailde_verwachtingen, "gemailde_verwachtingen")}
-        {isF && (e.wu_products?.length || e.wu_anders) && <div className="ef-block"><div className="ef-label">Web Upload</div><div className="ef-value">{[...(e.wu_products || []), e.wu_anders && `Anders: ${e.wu_anders}`].filter(Boolean).join(", ")}</div></div>}
-        {isF && e.notam_verzonden && (
-          <div className="ef-block">
-            <div className="ef-label">NOTAMs verzonden</div>
-            <div className="ef-value">
-              {(e.notam_shifts || []).join(", ")}
-              {e.notam_opmerkingen && ` — ${e.notam_opmerkingen}`}
-            </div>
-          </div>
-        )}
-        {storingen.length > 0 && <div className="ef-block" style={{ borderLeft: "3px solid var(--danger)" }}><div className="ef-label">Storingen / Defecten</div><div className={`ef-value${chefEdits.some(k => k.startsWith("com_") || k.startsWith("inst_")) ? " chef-changed" : ""}`}>{storingen.join("\n")}</div></div>}
-        {isAdmin && ef("Werkzaamheden-Admin", werkzaamhedenTekst, "werkzaamheden")}
-        {isAdmin && ef("Werkzaamheden-Onderhoud", e.onderhoud_notities, "onderhoud_notities")}
-        {isAdmin && ef("Spullen ontvangen", e.spullen_ontvangen, "spullen_ontvangen")}
-        {isAdmin && ef("Spullen verzonden", e.spullen_verzonden, "spullen_verzonden")}
-        {isO && (e.personen || []).map((p, idx) => {
-          const heeftWz = (p.synop_gedaan?.length || p.synop_amhs_gedaan?.length || p.metar_gedaan?.length || p.klima_gedaan?.length || p.taf_gedaan?.length || p.digitaal_speci_gedaan || p.rr_gedaan);
-          if (!heeftWz) return null;
-          return (
-            <div key={idx} className="ef-block">
-              <div className="ef-label">{p.naam || `Persoon ${idx + 1}`}</div>
-              <div className="ef-value">
-                {p.synop_gedaan?.length ? `Synop-boek: ${fmtSlots(p.synop_gedaan, p.synop_init)}\n` : ""}
-                {p.synop_amhs_gedaan?.length ? `Synop-AMHS: ${fmtSlots(p.synop_amhs_gedaan, p.synop_amhs_init)}\n` : ""}
-                {p.metar_gedaan?.length ? `Metar-AMHS: ${fmtSlots(p.metar_gedaan, p.metar_init)}\n` : ""}
-                {p.klima_gedaan?.length ? `Klimawaarneming-boek: ${fmtSlots(p.klima_gedaan, p.klima_init)}\n` : ""}
-                {p.taf_gedaan?.length ? `TAF: ${fmtSlots(p.taf_gedaan, p.taf_init)}\n` : ""}
-                {p.digitaal_speci_gedaan ? `SPECI: ${p.digitaal_speci_welke || "Ja"}${p.digitaal_speci_init ? ` (${p.digitaal_speci_init})` : ""}\n` : ""}
-                {p.rr_gedaan ? `RR naar Klima: Verzonden${p.rr_init ? ` (${p.rr_init})` : ""}` : ""}
+        {secties.map(sectie => (
+          <div className="ef-sectie" key={sectie.titel}>
+            <div className="ef-sectie-titel">{sectie.titel}</div>
+            {(sectie.rijen || []).map(regel)}
+            {(sectie.subblokken || []).map(blok => (
+              <div className="ef-subblok" key={blok.titel}>
+                <div className="ef-subblok-titel">{blok.titel}</div>
+                {blok.rijen.map(regel)}
               </div>
-            </div>
-          );
-        })}
-        {ef("Communicatie – Anders", e.com_anders, "com_anders")}
-        {ef("Instrumenten – Anders", e.inst_anders, "inst_anders")}
-        {ef("Maaiwerkzaamheden", e.byz_maaiwerkzaamheden, "byz_maaiwerkzaamheden")}
-        {ef("Toilet", e.byz_toilet, "byz_toilet")}
-        {ef("Logistiek – Anders", e.byz_logistiek_anders, "byz_logistiek_anders")}
-        {(e.ziekmeldingen || []).length > 0 && (
-          <div className="ef-block"><div className="ef-label">Ziektemeldingen</div><div className={`ef-value${markKlasse("ziekmeldingen")}`}>
-            {e.ziekmeldingen.map((z, i) => `${[z.tijd, z.naam, z.periode].filter(Boolean).join(" — ")}`).filter(Boolean).join("\n")}
-          </div></div>
-        )}
-        {(e.aanvragen || []).length > 0 && (
-          <div className="ef-block"><div className="ef-label">Aanvragen</div><div className={`ef-value${markKlasse("aanvragen")}`}>
-            {e.aanvragen.map(a => `${[a.type, a.naam, a.periode].filter(Boolean).join(" — ")}`).filter(Boolean).join("\n")}
-          </div></div>
-        )}
-        {ef("Algemeen", e.byz_algemeen, "byz_algemeen")}
-        {e.ingevuld_door && <div style={{ fontSize: 11, color: "var(--inkLo)", fontFamily: "IBM Plex Mono,monospace" }}>Ingevuld door: {e.ingevuld_door}</div>}
+            ))}
+          </div>
+        ))}
+
         {correctieVelden.length > 0 && (() => {
           const laatste = (e.correcties || [])[(e.correcties || []).length - 1];
           return (
-            <div style={{ fontSize: 11, color: "var(--correctie)", fontFamily: "IBM Plex Mono,monospace", fontWeight: 600 }}>
+            <div style={{ fontSize: 11, color: "var(--correctie)", fontFamily: "IBM Plex Mono,monospace", fontWeight: 600, marginTop: 8 }}>
               Gecorrigeerd door {laatste?.door || e.ingevuld_door || "—"}{laatste?.tijdstip ? ` · ${laatste.tijdstip}` : ""} — correcties staan in het groen.
             </div>
           );
         })()}
         {chefEdits.length > 0 && (
-          <div style={{ fontSize: 11, color: "var(--danger)", fontFamily: "IBM Plex Mono,monospace", fontWeight: 600 }}>
+          <div style={{ fontSize: 11, color: "var(--danger)", fontFamily: "IBM Plex Mono,monospace", fontWeight: 600, marginTop: 4 }}>
             Aantekening door chef: {e.chef_edit_door || "—"}{e.chef_edit_datum ? ` · ${String(e.chef_edit_datum).slice(0, 10)}` : ""} — Aantekeningen staan in het rood.
           </div>
         )}
