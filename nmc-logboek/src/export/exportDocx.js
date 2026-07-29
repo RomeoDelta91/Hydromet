@@ -9,6 +9,12 @@ const CHEF_RED = "D94040";
 // Groen voor een eigen correctie door de invoerder binnen het correctievenster.
 const CORRECTIE_GROEN = "0B7A57";
 
+// Lege velden worden niet overgeslagen maar als streepje getoond, zodat het
+// document laat zien dat het veld bestond en niet is ingevuld.
+const LEEG = "\u2014";
+const w = v => (v === undefined || v === null || v === "" ? LEEG : v);
+const lijst = v => (Array.isArray(v) && v.length ? v.join(", ") : LEEG);
+
 const chefEditsVan = e => e.chef_edits || [];
 // Rood (chef) weegt zwaarder dan groen (eigen correctie) als een veld in beide staat.
 const chefOpts = (e, key) => {
@@ -59,48 +65,38 @@ function basisgegevensSection(e) {
   const isF = e.type === "forecaster";
   const isAdmin = e.type === "administratie";
   const personenNamen = (e.personen || []).map(p => p.naam).filter(Boolean).join(", ");
-  const rows = [kv("Datum", e.datum)];
-  if (!isAdmin) rows.push(kv("Dienst", e.shift));
-  if (!isAdmin && e.shift_code) rows.push(kv("Shift", e.shift_code));
-  if (isAdmin) {
-    rows.push(kv("Administratie", (e.administratie || []).filter(Boolean).join(", ") || "-"));
-  } else {
-    rows.push(kv(isF ? "Meteoroloog" : "Adjunct-meteorologen", isF ? (personenNamen || e.meteoroloog || "") : personenNamen));
+  const rows = [kv("Datum", w(e.datum))];
+  if (!isAdmin) {
+    rows.push(kv("Dienst", w(e.shift)));
+    rows.push(kv("Shift", w(e.shift_code)));
   }
-  if ((isAdmin || e.type === "observer") && (e.onderhoud || []).filter(Boolean).length) {
-    rows.push(kv("Onderhoudmedewerker", e.onderhoud.filter(Boolean).join(", ")));
+  if (isAdmin) {
+    rows.push(kv("Administratie", w((e.administratie || []).filter(Boolean).join(", "))));
+  } else {
+    rows.push(kv(isF ? "Meteoroloog" : "Adjunct-meteorologen", w(isF ? (personenNamen || e.meteoroloog) : personenNamen)));
+  }
+  if (e.type === "observer") rows.push(kv("Security", w((e.security || []).filter(Boolean).join(", "))));
+  if (isAdmin || e.type === "observer") {
+    rows.push(kv("Onderhoudmedewerker", w((e.onderhoud || []).filter(Boolean).join(", "))));
   }
   if (isF) {
-    if ((e.verwachtingen_checks || []).length) rows.push(kv("Verwachtingen uitgebracht", e.verwachtingen_checks.join(", ")));
-    if (e.verwachtingen) rows.push(kv("Anders (omschrijf)", e.verwachtingen));
+    rows.push(kv("Verwachtingen uitgebracht", lijst(e.verwachtingen_checks)));
+    rows.push(kv("Anders (omschrijf)", w(e.verwachtingen)));
   }
-  rows.push(kv("Ingevuld door", e.ingevuld_door || ""));
+  rows.push(kv("Ingevuld door", w(e.ingevuld_door)));
   return [heading("Basisgegevens"), table(rows)];
 }
 
 function administratieWerkSection(e) {
-  const blocks = [];
-  // Oudere entries hadden werkzaamheden als per-uur object; toon die nog als
-  // er geen `werkzaamheden`-tekstveld is (nieuw formaat).
   const tekst = typeof e.werkzaamheden === "string" && e.werkzaamheden
     ? e.werkzaamheden
     : Object.entries(e.werkzaamheden_per_uur || {}).filter(([, v]) => v).map(([uur, v]) => `${uur}: ${v}`).join("\n");
-  if (tekst) {
-    blocks.push(new Paragraph({ text: "Werkzaamheden-Admin", heading: HeadingLevel.HEADING_3 }));
-    blocks.push(new Paragraph({ text: tekst }));
-  }
-  if (e.onderhoud_notities) {
-    blocks.push(new Paragraph({ text: "Werkzaamheden-Onderhoud", heading: HeadingLevel.HEADING_4 }));
-    blocks.push(new Paragraph({ text: e.onderhoud_notities }));
-  }
-  if (e.spullen_ontvangen) {
-    blocks.push(new Paragraph({ text: "Spullen ontvangen", heading: HeadingLevel.HEADING_4 }));
-    blocks.push(new Paragraph({ text: e.spullen_ontvangen }));
-  }
-  if (e.spullen_verzonden) {
-    blocks.push(new Paragraph({ text: "Spullen verzonden", heading: HeadingLevel.HEADING_4 }));
-    blocks.push(new Paragraph({ text: e.spullen_verzonden }));
-  }
+  const blocks = [table([
+    kv("Werkzaamheden-Admin", w(tekst), chefOpts(e, "werkzaamheden")),
+    kv("Werkzaamheden-Onderhoud", w(e.onderhoud_notities), chefOpts(e, "onderhoud_notities")),
+    kv("Spullen ontvangen", w(e.spullen_ontvangen), chefOpts(e, "spullen_ontvangen")),
+    kv("Spullen verzonden", w(e.spullen_verzonden), chefOpts(e, "spullen_verzonden")),
+  ])];
   return blocks;
 }
 
@@ -108,7 +104,7 @@ function administratieWerkSection(e) {
 // voor zaken die buiten de vaste categorieën vallen.
 function statusSection(titel, labels, e, ids, andersKey) {
   const rows = statusRows(labels, e);
-  if (ids.includes(andersKey) && e[andersKey]) rows.push(kv("Anders", e[andersKey], chefOpts(e, andersKey)));
+  if (ids.includes(andersKey)) rows.push(kv("Anders", w(e[andersKey]), chefOpts(e, andersKey)));
   if (!rows.length) return [];
   return [heading(titel, HeadingLevel.HEADING_3), table(rows)];
 }
@@ -119,75 +115,109 @@ function werkzaamhedenSection(e) {
   (e.personen || []).forEach((p, idx) => {
     blocks.push(new Paragraph({ text: p.naam || `Persoon ${idx + 1}`, heading: HeadingLevel.HEADING_4 }));
     // Elk tijdstip met de bijbehorende initialen: "12 UTC (AB), 13 UTC (CD)".
-    const withInit = (arr, initMap) => (arr || []).map(t => `${t}${initMap?.[t] ? ` (${initMap[t]})` : ""}`).join(", ") || "-";
+    const withInit = (arr, initMap) => (arr || []).map(t => `${t}${initMap?.[t] ? ` (${initMap[t]})` : ""}`).join(", ") || LEEG;
     const rows = [
-      kv("Werktijd", `${p.werktijd_van || "?"} - ${p.werktijd_tot || "?"}`),
       kv("Synop-boek", withInit(p.synop_gedaan, p.synop_init)),
       kv("Synop-AMHS", withInit(p.synop_amhs_gedaan, p.synop_amhs_init)),
       kv("Metar-AMHS", withInit(p.metar_gedaan, p.metar_init)),
       kv("Klimawaarneming-boek", withInit(p.klima_gedaan, p.klima_init)),
-      kv("TAF", withInit(p.taf_gedaan, p.taf_init)),
-      kv("Digitaal SPECI", p.digitaal_speci_gedaan ? (p.digitaal_speci_welke || "Ja") + (p.digitaal_speci_init ? ` (${p.digitaal_speci_init})` : "") : "-"),
-      kv("RR naar Klima", p.rr_gedaan ? "Verzonden" + (p.rr_init ? ` (${p.rr_init})` : "") : "-"),
+      kv("Upload Metar website", withInit(p.upload_metar_gedaan, p.upload_metar_init)),
+      kv("Digitale invoer WX website", withInit(p.digitaal_wx_gedaan, p.digitaal_wx_init)),
+      kv("Digitale invoer Klima website", withInit(p.digitaal_klima_gedaan, p.digitaal_klima_init)),
+      kv("Upload Synop WIS 2.0", withInit(p.wis_synop_gedaan, p.wis_synop_init)),
+      kv("Verzenden TAF", withInit(p.taf_gedaan, p.taf_init)),
+      kv("Digitale invoer SPECI website", p.digitaal_speci_gedaan ? (p.digitaal_speci_welke || "Ja") + (p.digitaal_speci_init ? ` (${p.digitaal_speci_init})` : "") : LEEG),
+      kv("Verzenden RR naar Klima", p.rr_gedaan ? "Verzonden" + (p.rr_init ? ` (${p.rr_init})` : "") : LEEG),
     ];
     blocks.push(table(rows));
   });
   return blocks;
 }
 
+// Overige Werkzaamheden (Climate Report, ACT, ACS, Temp) ontbrak eerder
+// volledig in de Word-export.
+function overigeWerkSection(e) {
+  if (e.type !== "observer") return [];
+  const combineer = (status, extra, init) =>
+    [status, extra, init && `(${init})`].filter(Boolean).join(" \u00b7 ") || LEEG;
+  return [heading("Overige Werkzaamheden", HeadingLevel.HEADING_3), table([
+    kv("Climate Report", combineer(e.wz_climate, e.wz_climate_maand, e.wz_climate_init), chefOpts(e, "wz_climate")),
+    kv("ACT", combineer(e.wz_act, e.wz_act_maand, e.wz_act_init), chefOpts(e, "wz_act")),
+    kv("ACS", combineer(e.wz_acs, e.wz_acs_maand, e.wz_acs_init), chefOpts(e, "wz_acs")),
+    kv("Temp", combineer(e.wz_temp, [e.wz_temp_dag, e.wz_temp_tijd].filter(Boolean).join(" "), e.wz_temp_init), chefOpts(e, "wz_temp")),
+  ])];
+}
+
 function webUploadSection(e) {
   if (e.type !== "forecaster") return [];
-  if (!e.wu_products?.length && !e.wu_anders) return [];
-  const items = [...(e.wu_products || []), e.wu_anders && `Anders: ${e.wu_anders}`].filter(Boolean).join(", ");
-  return [heading("Web Upload", HeadingLevel.HEADING_3), new Paragraph({ text: items })];
+  return [heading("Web Upload", HeadingLevel.HEADING_3), table([
+    kv("Producten geüpload", lijst(e.wu_products), chefOpts(e, "wu_products")),
+    kv("Anders", w(e.wu_anders), chefOpts(e, "wu_anders")),
+  ])];
 }
 
 function gemaildeVerwachtingenSection(e) {
-  if (e.type !== "forecaster" || !(e.gemailde_verwachtingen || []).length) return [];
-  return [heading("Gemailde Verwachtingen", HeadingLevel.HEADING_3), new Paragraph({ text: e.gemailde_verwachtingen.join(", ") })];
+  if (e.type !== "forecaster") return [];
+  return [heading("Gemailde Verwachtingen", HeadingLevel.HEADING_3), table([
+    kv("Gemailde producten", lijst(e.gemailde_verwachtingen), chefOpts(e, "gemailde_verwachtingen")),
+  ])];
 }
 
 function notamSection(e) {
-  if (e.type !== "forecaster" || !e.notam_verzonden) return [];
-  const rows = (e.notam_shifts || []).map(s => new TableRow({ children: [cell("Shift", { bold: true, width: 35 }), cell(s)] }));
-  if (e.notam_opmerkingen) rows.push(kv("Opmerkingen", e.notam_opmerkingen));
-  return [heading("NOTAMs verzonden", HeadingLevel.HEADING_3), table(rows)];
+  if (e.type !== "forecaster") return [];
+  return [heading("NOTAMs", HeadingLevel.HEADING_3), table([
+    kv("Verzonden deze shift", e.notam_verzonden ? "Ja" : "Nee", chefOpts(e, "notam_verzonden")),
+    kv("Voor shift(s)", lijst(e.notam_shifts), chefOpts(e, "notam_shifts")),
+    kv("Opmerkingen", w(e.notam_opmerkingen), chefOpts(e, "notam_opmerkingen")),
+  ])];
 }
 
 // `ids` bevat de geselecteerde leaf-id's; alleen die elementen komen mee.
 function bijzonderhedenSection(e, ids) {
   const has = id => ids.includes(id);
-  const fields = [
+  const logistiek = [
     ["byz_dienstauto", "Dienstauto"], ["byz_dienstbus", "Dienstbus"], ["byz_hydrofoor", "Hydrofoor"],
-    ["byz_stroom", "Stroomonderbrekingen"], ["byz_swm", "Levering SWM water"], ["byz_maaiwerkzaamheden", "Maaiwerkzaamheden"],
-    ["byz_toilet", "Toilet"], ["byz_logistiek_anders", "Anders"],
+    ["byz_stroom", "Stroomonderbrekingen"], ["byz_swm", "Levering SWM water"],
+    ["byz_toilet", "Toilet"], ["byz_maaiwerkzaamheden", "Maaiwerkzaamheden"], ["byz_logistiek_anders", "Anders"],
+  ];
+  const operationeel = [
     ["byz_airlines", "Airlines"], ["byz_operations", "Operations"], ["byz_atc", "ATC"], ["byz_toren", "Toren"],
   ];
-  const rows = fields.filter(([k]) => has(k) && e[k]).map(([k, l]) => kv(l, e[k], chefOpts(e, k)));
   const blocks = [];
-  if (rows.length) blocks.push(heading("Bijzonderheden", HeadingLevel.HEADING_3), table(rows));
 
-  const ziek = has("ziekmeldingen") ? (e.ziekmeldingen || []).filter(z => z.tijd || z.naam || z.periode) : [];
-  if (ziek.length) {
+  // Geselecteerde velden komen altijd mee, ook als ze leeg zijn.
+  const groep = (titel, velden) => {
+    const rows = velden.filter(([k]) => has(k)).map(([k, l]) => kv(l, w(e[k]), chefOpts(e, k)));
+    if (rows.length) blocks.push(heading(titel, HeadingLevel.HEADING_3), table(rows));
+  };
+  groep("Bijzonderheden \u2013 Logistiek", logistiek);
+  groep("Bijzonderheden \u2013 Operationeel", operationeel);
+
+  if (has("ziekmeldingen")) {
+    const ziek = (e.ziekmeldingen || []).filter(z => z.tijd || z.naam || z.periode);
     blocks.push(heading("Ziektemeldingen", HeadingLevel.HEADING_3));
-    blocks.push(table([
-      new TableRow({ children: [cell("Tijd", { bold: true, width: 20 }), cell("Naam", { bold: true, width: 40 }), cell("Periode", { bold: true, width: 40 })] }),
-      ...ziek.map(z => new TableRow({ children: [cell(z.tijd), cell(z.naam), cell(z.periode)] })),
-    ]));
+    blocks.push(ziek.length
+      ? table([
+          new TableRow({ children: [cell("Tijd", { bold: true, width: 20 }), cell("Naam", { bold: true, width: 40 }), cell("Periode", { bold: true, width: 40 })] }),
+          ...ziek.map(z => new TableRow({ children: [cell(w(z.tijd)), cell(w(z.naam)), cell(w(z.periode))] })),
+        ])
+      : table([kv("Meldingen", LEEG, chefOpts(e, "ziekmeldingen"))]));
   }
 
-  const aanvr = has("aanvragen") ? (e.aanvragen || []).filter(a => a.type || a.naam || a.periode) : [];
-  if (aanvr.length) {
+  if (has("aanvragen")) {
+    const aanvr = (e.aanvragen || []).filter(a => a.type || a.naam || a.periode);
     blocks.push(heading("Aanvragen", HeadingLevel.HEADING_3));
-    blocks.push(table([
-      new TableRow({ children: [cell("Type", { bold: true, width: 20 }), cell("Naam", { bold: true, width: 40 }), cell("Periode", { bold: true, width: 40 })] }),
-      ...aanvr.map(a => new TableRow({ children: [cell(a.type), cell(a.naam), cell(a.periode)] })),
-    ]));
+    blocks.push(aanvr.length
+      ? table([
+          new TableRow({ children: [cell("Type", { bold: true, width: 20 }), cell("Naam", { bold: true, width: 40 }), cell("Periode", { bold: true, width: 40 })] }),
+          ...aanvr.map(a => new TableRow({ children: [cell(w(a.type)), cell(w(a.naam)), cell(w(a.periode))] })),
+        ])
+      : table([kv("Aanvragen", LEEG, chefOpts(e, "aanvragen"))]));
   }
 
-  if (has("byz_algemeen") && e.byz_algemeen) {
-    blocks.push(new Paragraph({ text: "Algemeen", heading: HeadingLevel.HEADING_4 }));
-    blocks.push(new Paragraph({ children: [new TextRun({ text: e.byz_algemeen, ...chefOpts(e, "byz_algemeen") })] }));
+  if (has("byz_algemeen")) {
+    blocks.push(heading("Algemene Bijzonderheden", HeadingLevel.HEADING_3));
+    blocks.push(table([kv("Algemeen", w(e.byz_algemeen), chefOpts(e, "byz_algemeen"))]));
   }
   return blocks;
 }
@@ -235,7 +265,7 @@ function entrySections(e, ids) {
     blocks.push(...statusSection("Communicatie", commLabels, e, ids, "com_anders"));
     blocks.push(...statusSection("Instrumenten", instLabels, e, ids, "inst_anders"));
   }
-  if (sec("werkzaamheden") && e.type === "observer") blocks.push(...werkzaamhedenSection(e));
+  if (sec("werkzaamheden") && e.type === "observer") blocks.push(...werkzaamhedenSection(e), ...overigeWerkSection(e));
   if (sec("werkzaamheden") && isAdmin) blocks.push(...administratieWerkSection(e));
   if (sec("gemailde_verwachtingen")) blocks.push(...gemaildeVerwachtingenSection(e));
   if (sec("webupload")) blocks.push(...webUploadSection(e));
