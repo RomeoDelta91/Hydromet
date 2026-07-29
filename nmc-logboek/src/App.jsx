@@ -100,7 +100,13 @@ export default function App() {
 
   const handleCorrectieSave = async entry => {
     try {
-      await corrigeerEntry(entry.uuid || entry.id, entry);
+      // Een correctie werkt het bestaande record bij; zonder uuid zou er een
+      // los record kunnen ontstaan, dus dat wordt hier hard tegengehouden.
+      if (!entry.uuid) {
+        showToast("Correctie mislukt: het oorspronkelijke record ontbreekt.");
+        return;
+      }
+      await corrigeerEntry(entry.uuid, entry);
       showToast("✓ Correctie opgeslagen");
       setCorrectie(null);
       setVerversToken(v => v + 1);
@@ -158,6 +164,10 @@ export default function App() {
 
   // Forecaster- en observertab: bij een lopende correctie het formulier in
   // correctiestand tonen, anders het correctieblok boven het lege formulier.
+  // De `key` is essentieel: zonder een verschillende key hergebruikt React
+  // hetzelfde formulier-component bij het wisselen tussen nieuw invullen en
+  // corrigeren. Het formulier vult zijn velden alleen bij het aanmaken, dus
+  // zou de opgehaalde invoer dan niet in beeld komen en bleef het scherm leeg.
   const formTab = (type, FormComp) => {
     if (correctie && correctie.type === type) {
       return (
@@ -165,14 +175,20 @@ export default function App() {
           <button className="btn btn-secondary" style={{ marginBottom: 12 }} onClick={() => setCorrectie(null)}>
             ← Correctie annuleren
           </button>
-          <FormComp initial={correctie} gebruiker={gebruiker} onSave={handleCorrectieSave} correctieMode />
+          <FormComp
+            key={`correctie-${correctie.uuid || correctie.id}`}
+            initial={correctie}
+            gebruiker={gebruiker}
+            onSave={handleCorrectieSave}
+            correctieMode
+          />
         </>
       );
     }
     return (
       <>
         <EigenCorrectie onStart={setCorrectie} verversToken={verversToken} />
-        <FormComp onSave={handleSaveForecaster} gebruiker={gebruiker} />
+        <FormComp key="nieuw" onSave={handleSaveForecaster} gebruiker={gebruiker} />
       </>
     );
   };

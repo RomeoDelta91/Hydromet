@@ -100,10 +100,16 @@ function normalizeInitial(initial) {
   if (!Array.isArray(merged.ziekmeldingen)) merged.ziekmeldingen = [];
   if (!Array.isArray(merged.aanvragen)) merged.aanvragen = [];
   if (Array.isArray(merged.personen)) {
+    // Vul elke persoon aan met de standaardvelden. Ontbreekt een van de
+    // aanvinklijsten in een opgeslagen record, dan zou het formulier bij het
+    // openen van een correctie stukgaan.
     merged.personen = merged.personen.map(p => {
-      const next = { ...p };
+      const next = { ...DEF_PERSOON, ...p };
       INIT_KEYS.forEach(k => {
         if (typeof next[k] !== "object" || next[k] === null || Array.isArray(next[k])) next[k] = {};
+      });
+      Object.keys(DEF_PERSOON).forEach(k => {
+        if (Array.isArray(DEF_PERSOON[k]) && !Array.isArray(next[k])) next[k] = [];
       });
       return next;
     });
