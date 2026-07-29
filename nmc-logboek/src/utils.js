@@ -1,17 +1,12 @@
 export const today = () => new Date().toISOString().slice(0, 10);
 export const nowId = () => Date.now().toString(36);
 
-// Een chef-aantekening is bedoeld voor de chef die het werk van een ander
-// aanpast. Staat de aantekening op naam van dezelfde persoon die het record
-// heeft ingevuld, dan is het geen aantekening maar gewoon eigen invoer — die
-// wordt genegeerd. Zo blijven ook records die eerder onterecht gestempeld zijn
-// vanaf nu schoon in beeld.
+// Een chef-aantekening hoort bij het bijwerken van een bestaand record, niet
+// bij het aanmaken ervan. Bij het aanmaken wordt er nooit iets gestempeld, dus
+// is de aanwezigheid van chef_edits genoeg — ook als de chef zijn eigen
+// eerdere invoer aanpast, want ook dat is een aanpassing achteraf.
 export function chefAantekeningVelden(e) {
-  const velden = Array.isArray(e?.chef_edits) ? e.chef_edits : [];
-  if (!velden.length) return [];
-  const door = e.chef_edit_door || "";
-  if (door && door === (e.ingevuld_door || "")) return [];
-  return velden;
+  return Array.isArray(e?.chef_edits) ? e.chef_edits : [];
 }
 
 // Technische/meta-velden die niet meetellen bij het bepalen wat de chef
@@ -23,12 +18,25 @@ const DIFF_SKIP = new Set([
 
 // Vergelijkt een bewerkte entry met het origineel en geeft de veldnamen terug
 // die inhoudelijk gewijzigd zijn, zodat die daarna rood getoond kunnen worden.
+// Een ontbrekend veld, null, een lege tekst en een lege lijst betekenen
+// allemaal "niets ingevuld". Zonder deze gelijkstelling zou het openen en
+// opslaan van een ouder record elk veld dat sindsdien is toegevoegd als
+// wijziging aanmerken, terwijl de chef er niets aan gedaan heeft.
+function genormaliseerd(v) {
+  if (v === undefined || v === null || v === "") return null;
+  if (Array.isArray(v) && v.length === 0) return null;
+  if (typeof v === "object" && !Array.isArray(v) && Object.keys(v).length === 0) return null;
+  return v;
+}
+
 export function gewijzigdeVelden(origineel, bewerkt) {
   const keys = new Set([...Object.keys(origineel || {}), ...Object.keys(bewerkt || {})]);
   const uit = [];
   keys.forEach(k => {
     if (DIFF_SKIP.has(k)) return;
-    if (JSON.stringify(origineel?.[k] ?? null) !== JSON.stringify(bewerkt?.[k] ?? null)) uit.push(k);
+    const a = JSON.stringify(genormaliseerd(origineel?.[k]));
+    const b = JSON.stringify(genormaliseerd(bewerkt?.[k]));
+    if (a !== b) uit.push(k);
   });
   return uit;
 }

@@ -407,14 +407,18 @@ function nmc_login_clear_fails($username) {
 // ---------------------------------------------------------------------------
 define('NMC_CORRECTIE_MINUTEN', 30);
 
-// Een chef-aantekening telt alleen als die door iemand anders is gezet dan
-// degene die het record heeft ingevuld. Zet de chef iets bij zijn eigen invoer,
-// dan is dat geen aantekening en blokkeert het het correctievenster niet.
+// Heeft de chef een aantekening bij dit record gemaakt?
 function nmc_heeft_chef_aantekening($data, $ingevuld_door) {
-    if (empty($data['chef_edits'])) return false;
-    $door = $data['chef_edit_door'] ?? '';
-    if ($door !== '' && $door === $ingevuld_door) return false;
-    return true;
+    return !empty($data['chef_edits']);
+}
+
+// Ontbrekend, null, lege tekst en lege lijst betekenen allemaal "niets
+// ingevuld" — anders geldt een veld dat pas later aan het formulier is
+// toegevoegd ten onrechte als wijziging.
+function nmc_genormaliseerd($v) {
+    if ($v === null || $v === '') return null;
+    if (is_array($v) && count($v) === 0) return null;
+    return $v;
 }
 
 // Meta-velden die niet meetellen als inhoudelijke wijziging.
@@ -430,7 +434,7 @@ function nmc_diff_velden($oud, $nieuw) {
     $uit = [];
     foreach ($keys as $k) {
         if (in_array($k, $skip, true)) continue;
-        if (json_encode($oud[$k] ?? null) !== json_encode($nieuw[$k] ?? null)) $uit[] = $k;
+        if (json_encode(nmc_genormaliseerd($oud[$k] ?? null)) !== json_encode(nmc_genormaliseerd($nieuw[$k] ?? null))) $uit[] = $k;
     }
     return $uit;
 }
