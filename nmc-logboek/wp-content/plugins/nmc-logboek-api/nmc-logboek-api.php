@@ -817,6 +817,13 @@ function nmc_put_logboek(WP_REST_Request $req) {
         ? ($body['personen'][0]['naam'] ?? ($body['meteoroloog'] ?? $row['meteoroloog']))
         : ($body['personen'][0]['naam'] ?? ($body['administratie'][0] ?? $row['meteoroloog']));
 
+    // De datum van de aantekening komt van de server, niet van de computer van
+    // de chef — anders bepaalt een verkeerd gezette pc-klok wat er in het
+    // logboek staat.
+    if (!empty($body['chef_edits'])) {
+        $body['chef_edit_datum'] = current_time('Y-m-d');
+    }
+
     $result = $wpdb->update(
         $table,
         [

@@ -103,7 +103,6 @@ export default function Overzicht({ canDelete, canEdit = true, canExport = true,
         chef_vorige_waarden: vorige,
         chef_edits: [...new Set([...(editing.chef_edits || []), ...gewijzigd])],
         chef_edit_door: gebruiker || "",
-        chef_edit_datum: today(),
       } : updated;
       await updateEntry(payload.uuid || payload.id, payload);
       showToast?.("✓ Logboek bijgewerkt");

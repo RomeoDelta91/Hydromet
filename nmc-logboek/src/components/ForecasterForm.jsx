@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { SHIFTS, SHIFT_CODES, NOTAM_SHIFTS, WEB_PRODUCTS, MAAIWERK_OPTS, VERWACHTINGEN_PER_SHIFT, GEMAILDE_VERWACHTINGEN_PER_SHIFT } from "../constants.js";
-import { today, nowId } from "../utils.js";
+import { nowId } from "../utils.js";
 import { checkDuplicate } from "../api.js";
 import Field from "./ui/Field.jsx";
 import StatusRow from "./ui/StatusRow.jsx";
@@ -11,7 +11,9 @@ import VorigeRecords from "./VorigeRecords.jsx";
 const DEF_PERSOON_F = { naam: "" };
 
 const DEF_F = {
-  datum: today(),
+  // Bewust leeg: de invuller kiest zelf de datum, zodat de klok van de
+  // computer nooit ongemerkt een verkeerde dag vastlegt.
+  datum: "",
   shift: "",
   shift_code: "",
   personen: [{ ...DEF_PERSOON_F }],
@@ -52,7 +54,7 @@ const DEF_F = {
 
 // Zet oudere entries (met los `meteoroloog`-veld) om naar de personen-array.
 function normalizeInitial(initial) {
-  if (!initial) return { ...DEF_F, datum: today() };
+  if (!initial) return { ...DEF_F };
   const merged = { ...DEF_F, ...initial };
   if (!Array.isArray(merged.personen) || merged.personen.length === 0) {
     merged.personen = [{ naam: initial.meteoroloog || "" }];
@@ -124,7 +126,7 @@ export default function ForecasterForm({ onSave, gebruiker, initial, editMode, c
         }
       }
       await onSave({ ...f, type: "forecaster", meteoroloog, id: f.id || nowId(), ts: Date.now(), ingevuld_door: gebruiker });
-      setF({ ...DEF_F, datum: today(), personen: [{ ...DEF_PERSOON_F }] });
+      setF({ ...DEF_F, personen: [{ ...DEF_PERSOON_F }] });
       setErrors({});
     } finally {
       setSaving(false);
@@ -144,7 +146,7 @@ export default function ForecasterForm({ onSave, gebruiker, initial, editMode, c
         <div className="card-header"><span>📋 Basisgegevens</span></div>
         <div className="card-body">
           <div className="field-grid">
-            <div className="field"><label>Datum {errors.datum && <span style={{ color: "var(--danger)" }}>*</span>}</label><input type="date" value={f.datum} onChange={e => upd("datum", e.target.value)} style={reqStyle("datum")} /></div>
+            <div className="field"><label>Datum {errors.datum && <span style={{ color: "var(--danger)" }}>*</span>}</label><input type="date" value={f.datum} onChange={e => upd("datum", e.target.value)} style={reqStyle("datum")} />{!f.datum && <span style={{ fontSize: 11, color: "var(--inkLo)" }}>Kies zelf de datum van de dienst.</span>}</div>
             <div className="field"><label>Dienst {errors.shift && <span style={{ color: "var(--danger)" }}>*</span>}</label><select value={f.shift} onChange={e => upd("shift", e.target.value)} style={reqStyle("shift")}><option value="">Selecteer…</option>{SHIFTS.map(s => <option key={s}>{s}</option>)}</select></div>
           </div>
           <div className="field-grid">

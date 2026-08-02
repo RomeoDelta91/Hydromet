@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { ADMIN_SHIFT, MAAIWERK_OPTS } from "../constants.js";
-import { today, nowId } from "../utils.js";
+import { nowId } from "../utils.js";
 import { checkDuplicate } from "../api.js";
 import Field from "./ui/Field.jsx";
 import RepeatText from "./ui/RepeatText.jsx";
 
 const DEF_ADMIN = {
-  datum: today(),
+  // Bewust leeg: de invuller kiest zelf de datum, zodat de klok van de
+  // computer nooit ongemerkt een verkeerde dag vastlegt.
+  datum: "",
   administratie: [""],
   onderhoud: [""],
   werkzaamheden: "",
@@ -26,7 +28,7 @@ const DEF_ADMIN = {
 // Oudere entries hadden werkzaamheden als per-uur object; migreer die naar één
 // vrij tekstveld zodat bestaand werk niet verloren gaat bij het bewerken.
 function normalizeInitial(initial) {
-  const merged = initial ? { ...DEF_ADMIN, ...initial } : { ...DEF_ADMIN, datum: today() };
+  const merged = initial ? { ...DEF_ADMIN, ...initial } : { ...DEF_ADMIN };
   if (!Array.isArray(merged.administratie) || merged.administratie.length === 0) merged.administratie = [""];
   if (!Array.isArray(merged.onderhoud) || merged.onderhoud.length === 0) merged.onderhoud = [""];
   if (typeof merged.werkzaamheden !== "string") {
@@ -64,7 +66,7 @@ export default function AdministratieForm({ onSave, gebruiker, initial, editMode
         }
       }
       await onSave({ ...f, type: "administratie", shift: ADMIN_SHIFT, meteoroloog, id: f.id || nowId(), ts: Date.now(), ingevuld_door: gebruiker });
-      setF({ ...DEF_ADMIN, datum: today() });
+      setF({ ...DEF_ADMIN });
       setErrors({});
     } finally {
       setSaving(false);
@@ -80,7 +82,7 @@ export default function AdministratieForm({ onSave, gebruiker, initial, editMode
         <div className="card-header"><span>📋 Basisgegevens</span></div>
         <div className="card-body">
           <div className="field-grid single">
-            <div className="field"><label>Datum {errors.datum && <span style={{ color: "var(--danger)" }}>*</span>}</label><input type="date" value={f.datum} onChange={e => upd("datum", e.target.value)} style={reqStyle("datum")} /></div>
+            <div className="field"><label>Datum {errors.datum && <span style={{ color: "var(--danger)" }}>*</span>}</label><input type="date" value={f.datum} onChange={e => upd("datum", e.target.value)} style={reqStyle("datum")} />{!f.datum && <span style={{ fontSize: 11, color: "var(--inkLo)" }}>Kies zelf de datum van de dienst.</span>}</div>
           </div>
           {Object.keys(errors).length > 0 && <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 4 }}>Vul de verplichte velden in (*).</p>}
           <div className="field-grid" style={{ marginTop: 8 }}>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { SHIFTS, SHIFT_CODES, MONTHS_NL, WZ_OPTS, SYNOP_TIMES, SYNOP_AMHS_TIMES, KLIMA_SHIFT, WIS_TIMES, TAF_TIMES, MAAIWERK_OPTS } from "../constants.js";
-import { today, nowId, filterTijdenVoorPersoon } from "../utils.js";
+import { nowId, filterTijdenVoorPersoon } from "../utils.js";
 import { checkDuplicate } from "../api.js";
 import Field from "./ui/Field.jsx";
 import StatusRow from "./ui/StatusRow.jsx";
@@ -41,7 +41,9 @@ export const DEF_PERSOON = {
 };
 
 const DEF_O_SHIFT = {
-  datum: today(),
+  // Bewust leeg: de invuller kiest zelf de datum, zodat de klok van de
+  // computer nooit ongemerkt een verkeerde dag vastlegt.
+  datum: "",
   shift: "",
   shift_code: "",
   personen: [{ ...DEF_PERSOON }],
@@ -94,7 +96,7 @@ const DEF_O_SHIFT = {
 const INIT_KEYS = ["synop_init", "synop_amhs_init", "metar_init", "klima_init", "taf_init", "wis_synop_init", "upload_metar_init", "digitaal_wx_init", "digitaal_klima_init"];
 
 function normalizeInitial(initial) {
-  const merged = initial ? { ...DEF_O_SHIFT, ...initial } : { ...DEF_O_SHIFT, datum: today() };
+  const merged = initial ? { ...DEF_O_SHIFT, ...initial } : { ...DEF_O_SHIFT };
   if (!Array.isArray(merged.security)) merged.security = merged.security ? [merged.security] : [""];
   if (!Array.isArray(merged.onderhoud)) merged.onderhoud = merged.onderhoud ? [merged.onderhoud] : [""];
   if (!Array.isArray(merged.ziekmeldingen)) merged.ziekmeldingen = [];
@@ -223,7 +225,7 @@ export default function ObserverForm({ onSave, gebruiker, initial, editMode, cor
         }
       }
       await onSave({ ...f, type: "observer", id: f.id || nowId(), ts: Date.now(), ingevuld_door: gebruiker });
-      setF({ ...DEF_O_SHIFT, datum: today() });
+      setF({ ...DEF_O_SHIFT });
       setErrors({});
       setActivePersoonTab(0);
     } finally {
@@ -252,7 +254,7 @@ export default function ObserverForm({ onSave, gebruiker, initial, editMode, cor
         <div className="card-header"><span>📋 Basisgegevens</span></div>
         <div className="card-body">
           <div className="field-grid">
-            <div className="field"><label>Datum {errors.datum && <span style={{ color: "var(--danger)" }}>*</span>}</label><input type="date" value={f.datum} onChange={e => upd("datum", e.target.value)} style={reqStyle("datum")} /></div>
+            <div className="field"><label>Datum {errors.datum && <span style={{ color: "var(--danger)" }}>*</span>}</label><input type="date" value={f.datum} onChange={e => upd("datum", e.target.value)} style={reqStyle("datum")} />{!f.datum && <span style={{ fontSize: 11, color: "var(--inkLo)" }}>Kies zelf de datum van de dienst.</span>}</div>
             <div className="field"><label>Dienst {errors.shift && <span style={{ color: "var(--danger)" }}>*</span>}</label><select value={f.shift} onChange={e => upd("shift", e.target.value)} style={reqStyle("shift")}><option value="">Selecteer…</option>{SHIFTS.map(s => <option key={s}>{s}</option>)}</select></div>
           </div>
           <div className="field-grid">
