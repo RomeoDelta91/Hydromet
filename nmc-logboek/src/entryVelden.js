@@ -91,7 +91,7 @@ function forecasterSecties(e) {
       rij("datum", "Datum", e.datum),
       rij("shift", "Dienst", e.shift),
       rij("shift_code", "Shift", e.shift_code),
-      rij("personen", "Meteoroloog(en)", namen),
+      rij(["personen", "meteoroloog", ...(e.personen || []).map((_, i) => `personen.${i}.naam`)], "Meteoroloog(en)", namen),
       rij("verwachtingen_checks", "Verwachtingen uitgebracht", lijst(e.verwachtingen_checks)),
       rij("verwachtingen", "Verwachtingen – Anders", e.verwachtingen),
       rij("ingevuld_door", "Ingevuld door", e.ingevuld_door),
@@ -135,7 +135,7 @@ function observerSecties(e) {
       rij("datum", "Datum", e.datum),
       rij("shift", "Dienst", e.shift),
       rij("shift_code", "Shift", e.shift_code),
-      rij("personen", "Adjunct-meteorologen", lijst(personen.map(p => p.naam))),
+      rij(["personen", ...personen.map((_, i) => `personen.${i}.naam`)], "Adjunct-meteorologen", lijst(personen.map(p => p.naam))),
       rij("security", "Security", lijst(e.security)),
       rij("onderhoud", "Onderhoudmedewerker", lijst(e.onderhoud)),
       rij("ingevuld_door", "Ingevuld door", e.ingevuld_door),
@@ -162,11 +162,12 @@ function observerSecties(e) {
         titel: persoon.naam || `Persoon ${idx + 1}`,
         rijen: [
           ...WERK_CATS.map(([gedaan, init, label]) =>
-            rij("personen", label, metInit(persoon[gedaan], persoon[init]))),
-          rij("personen", "Digitale invoer SPECI website", persoon.digitaal_speci_gedaan
+            rij([`personen.${idx}.${gedaan}`, `personen.${idx}.${init}`], label, metInit(persoon[gedaan], persoon[init]))),
+          rij([`personen.${idx}.digitaal_speci_gedaan`, `personen.${idx}.digitaal_speci_welke`, `personen.${idx}.digitaal_speci_init`],
+            "Digitale invoer SPECI website", persoon.digitaal_speci_gedaan
             ? `${persoon.digitaal_speci_welke || "Ja"}${persoon.digitaal_speci_init ? ` (${persoon.digitaal_speci_init})` : ""}`
             : ""),
-          rij("personen", "Verzenden RR naar Klima", persoon.rr_gedaan
+          rij([`personen.${idx}.rr_gedaan`, `personen.${idx}.rr_init`], "Verzenden RR naar Klima", persoon.rr_gedaan
             ? `Verzonden${persoon.rr_init ? ` (${persoon.rr_init})` : ""}`
             : ""),
         ],

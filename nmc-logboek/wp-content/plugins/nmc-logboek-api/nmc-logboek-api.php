@@ -806,14 +806,30 @@ function nmc_put_logboek(WP_REST_Request $req) {
     $uuid  = $req->get_param('uuid');
     $body  = $req->get_json_params();
 
+    $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE uuid=%s AND deleted_at IS NULL", $uuid), ARRAY_A);
+    if (!$row) return new WP_Error('not_found', 'Entry niet gevonden', ['status' => 404]);
+
+    // De kolommen datum/shift/meteoroloog moeten meelopen met de inhoud. Bleven
+    // ze achter, dan stond een record na een datumcorrectie nog onder de oude
+    // datum in het overzicht én hield het die datum bezet, waardoor een nieuwe
+    // invoer voor die dag als duplicaat werd geweigerd.
+    $meteoroloog = $body['type'] === 'forecaster'
+        ? ($body['personen'][0]['naam'] ?? ($body['meteoroloog'] ?? $row['meteoroloog']))
+        : ($body['personen'][0]['naam'] ?? ($body['administratie'][0] ?? $row['meteoroloog']));
+
     $result = $wpdb->update(
         $table,
-        ['data_json' => json_encode($body), 'ts_updated' => current_time('mysql')],
+        [
+            'datum'       => $body['datum'] ?? $row['datum'],
+            'shift'       => $body['shift'] ?? $row['shift'],
+            'meteoroloog' => $meteoroloog,
+            'data_json'   => json_encode($body),
+            'ts_updated'  => current_time('mysql'),
+        ],
         ['uuid' => $uuid, 'deleted_at' => null]
     );
 
     if ($result === false) return new WP_Error('db_error', $wpdb->last_error, ['status' => 500]);
-    if ($result === 0)     return new WP_Error('not_found', 'Entry niet gevonden', ['status' => 404]);
 
     if (($body['type'] ?? '') === 'observer') {
         $logboek_id = $wpdb->get_var($wpdb->prepare("SELECT id FROM $table WHERE uuid=%s", $uuid));

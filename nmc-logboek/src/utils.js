@@ -19,14 +19,43 @@ const DIFF_SKIP = new Set([
 // Vergelijkt een bewerkte entry met het origineel en geeft de veldnamen terug
 // die inhoudelijk gewijzigd zijn, zodat die daarna rood getoond kunnen worden.
 // Een ontbrekend veld, null, een lege tekst en een lege lijst betekenen
-// allemaal "niets ingevuld". Zonder deze gelijkstelling zou het openen en
-// opslaan van een ouder record elk veld dat sindsdien is toegevoegd als
-// wijziging aanmerken, terwijl de chef er niets aan gedaan heeft.
+// allemaal "niets ingevuld". De vergelijking gaat door tot in geneste objecten
+// en lijsten, zodat een veld dat pas later aan het formulier is toegevoegd en
+// leeg wordt opgeslagen niet als wijziging telt.
 function genormaliseerd(v) {
   if (v === undefined || v === null || v === "") return null;
-  if (Array.isArray(v) && v.length === 0) return null;
-  if (typeof v === "object" && !Array.isArray(v) && Object.keys(v).length === 0) return null;
+  if (Array.isArray(v)) {
+    const arr = v.map(genormaliseerd).filter(x => x !== null);
+    return arr.length ? arr : null;
+  }
+  if (typeof v === "object") {
+    const uit = {};
+    Object.keys(v).sort().forEach(k => {
+      const nv = genormaliseerd(v[k]);
+      if (nv !== null) uit[k] = nv;
+    });
+    return Object.keys(uit).length ? uit : null;
+  }
   return v;
+}
+
+const gelijk = (a, b) => JSON.stringify(genormaliseerd(a)) === JSON.stringify(genormaliseerd(b));
+
+// `personen` is één veld met daarin alle namen en werkzaamheden. Zonder deze
+// uitsplitsing zou één gewijzigd tijdstip het hele blok rood kleuren, inclusief
+// de namen en alle andere categorieen. Daarom per persoon en per veld.
+function diffPersonen(oud, nieuw) {
+  const a = Array.isArray(oud) ? oud : [];
+  const b = Array.isArray(nieuw) ? nieuw : [];
+  const uit = [];
+  if (a.length !== b.length) uit.push("personen");
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const pa = a[i] || {}, pb = b[i] || {};
+    new Set([...Object.keys(pa), ...Object.keys(pb)]).forEach(k => {
+      if (!gelijk(pa[k], pb[k])) uit.push(`personen.${i}.${k}`);
+    });
+  }
+  return uit;
 }
 
 export function gewijzigdeVelden(origineel, bewerkt) {
@@ -34,12 +63,35 @@ export function gewijzigdeVelden(origineel, bewerkt) {
   const uit = [];
   keys.forEach(k => {
     if (DIFF_SKIP.has(k)) return;
-    const a = JSON.stringify(genormaliseerd(origineel?.[k]));
-    const b = JSON.stringify(genormaliseerd(bewerkt?.[k]));
-    if (a !== b) uit.push(k);
+    if (k === "personen") {
+      uit.push(...diffPersonen(origineel?.personen, bewerkt?.personen));
+      return;
+    }
+    if (!gelijk(origineel?.[k], bewerkt?.[k])) uit.push(k);
   });
   return uit;
 }
+
+// Heeft de chef tekst tóégevoegd aan wat er al stond, geef dan het
+// oorspronkelijke deel en de toevoeging apart terug. Zo hoeft alleen de
+// aantekening rood, en niet de tekst van de invuller ervoor.
+export function splitsAanvulling(waarde, vorigeWaarde) {
+  if (typeof waarde !== "string" || typeof vorigeWaarde !== "string") return null;
+  const oud = vorigeWaarde.trim();
+  if (!oud || oud === waarde.trim()) return null;
+  if (!waarde.startsWith(vorigeWaarde) && !waarde.startsWith(oud)) return null;
+  const knip = waarde.startsWith(vorigeWaarde) ? vorigeWaarde.length : oud.length;
+  const toevoeging = waarde.slice(knip);
+  if (!toevoeging.trim()) return null;
+  return { origineel: waarde.slice(0, knip), toevoeging };
+}
+
+// Een markering geldt als een van de opgegeven veldnamen in de lijst staat.
+export function heeftMarkering(key, lijst) {
+  if (!key || !lijst?.length) return false;
+  return Array.isArray(key) ? key.some(k => lijst.includes(k)) : lijst.includes(key);
+}
+
 
 // Geeft { van, tot } (maandag t/m zondag, YYYY-MM-DD) van de week waarin
 // `dateStr` valt.

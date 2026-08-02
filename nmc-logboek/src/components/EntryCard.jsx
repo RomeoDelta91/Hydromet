@@ -1,5 +1,5 @@
 import { sectiesVoorEntry } from "../entryVelden.js";
-import { chefAantekeningVelden } from "../utils.js";
+import { chefAantekeningVelden, heeftMarkering, splitsAanvulling } from "../utils.js";
 
 // Toont één volledig logboek-record: elk kopstuk en elk veld, ook wanneer een
 // veld niet is ingevuld (dan blijft de waarde leeg) of op de standaardwaarde
@@ -14,23 +14,41 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
   // Rood = aantekening van de chef, groen = eigen correctie van de invoerder.
   // Staat een veld in beide, dan weegt de chef-aantekening het zwaarst.
   const markKlasse = key => {
-    if (!key) return "";
-    if (chefEdits.includes(key)) return " chef-changed";
-    if (correctieVelden.includes(key)) return " correctie-changed";
+    if (heeftMarkering(key, chefEdits)) return " chef-changed";
+    if (heeftMarkering(key, correctieVelden)) return " correctie-changed";
     return "";
+  };
+
+  // Heeft de chef tekst toegevoegd aan wat er al stond, kleur dan alleen de
+  // toevoeging — niet de oorspronkelijke tekst van de invuller ervoor.
+  const vorige = e.chef_vorige_waarden || {};
+  const aanvulling = r => {
+    if (!heeftMarkering(r.key, chefEdits)) return null;
+    const sleutel = Array.isArray(r.key) ? r.key.find(k => k in vorige) : r.key;
+    return splitsAanvulling(r.waarde, vorige[sleutel]);
   };
 
   const secties = sectiesVoorEntry(e);
   const heeftStoring = secties.some(s => (s.rijen || []).some(r => r.waarschuwing));
 
-  const regel = (r, i) => (
-    <div className="ef-rij" key={`${r.key}-${r.label}-${i}`}>
-      <div className="ef-rij-label">{r.label}</div>
-      <div className={`ef-rij-waarde${r.waarde ? "" : " leeg"}${r.waarschuwing ? " storing" : ""}${markKlasse(r.key)}`}>
-        {r.waarde || "—"}
+  const regel = (r, i) => {
+    const deel = aanvulling(r);
+    return (
+      <div className="ef-rij" key={`${r.label}-${i}`}>
+        <div className="ef-rij-label">{r.label}</div>
+        {deel ? (
+          <div className="ef-rij-waarde">
+            {deel.origineel}
+            <span className="chef-changed">{deel.toevoeging}</span>
+          </div>
+        ) : (
+          <div className={`ef-rij-waarde${r.waarde ? "" : " leeg"}${r.waarschuwing ? " storing" : ""}${markKlasse(r.key)}`}>
+            {r.waarde || "—"}
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="entry-card">

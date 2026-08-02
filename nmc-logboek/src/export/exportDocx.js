@@ -2,7 +2,7 @@ import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   HeadingLevel, AlignmentType, WidthType, PageBreak, BorderStyle,
 } from "docx";
-import { chefAantekeningVelden } from "../utils.js";
+import { chefAantekeningVelden, heeftMarkering, splitsAanvulling } from "../utils.js";
 
 const BAD_STATUS = ["Storing", "Defect", "Uitgevallen"];
 // Rood voor velden die de chef/admin achteraf gewijzigd heeft.
@@ -19,10 +19,29 @@ const lijst = v => (Array.isArray(v) && v.length ? v.join(", ") : LEEG);
 const chefEditsVan = e => chefAantekeningVelden(e);
 // Rood (chef) weegt zwaarder dan groen (eigen correctie) als een veld in beide staat.
 const chefOpts = (e, key) => {
-  if (chefEditsVan(e).includes(key)) return { color: CHEF_RED, bold: true };
-  if ((e.correctie_velden || []).includes(key)) return { color: CORRECTIE_GROEN, bold: true };
+  if (heeftMarkering(key, chefEditsVan(e))) return { color: CHEF_RED, bold: true };
+  if (heeftMarkering(key, e.correctie_velden || [])) return { color: CORRECTIE_GROEN, bold: true };
   return {};
 };
+
+// Cel waarin alleen de door de chef toegevoegde tekst rood is; de tekst van de
+// invuller die ervoor stond blijft gewoon zwart.
+function waardeCell(e, key, waarde) {
+  const vorige = (e.chef_vorige_waarden || {})[key];
+  const deel = heeftMarkering(key, chefEditsVan(e)) ? splitsAanvulling(waarde, vorige) : null;
+  if (!deel) return cell(waarde, chefOpts(e, key));
+  return new TableCell({
+    children: [new Paragraph({ children: [
+      new TextRun({ text: deel.origineel }),
+      new TextRun({ text: deel.toevoeging, color: CHEF_RED, bold: true }),
+    ] })],
+  });
+}
+
+// Zelfde als kv(), maar houdt rekening met een door de chef aangevulde tekst.
+function kvVeld(e, key, label, waarde) {
+  return new TableRow({ children: [cell(label, { bold: true, width: 35 }), waardeCell(e, key, waarde)] });
+}
 
 function cell(text, { bold = false, color, width } = {}) {
   return new TableCell({
@@ -66,23 +85,24 @@ function basisgegevensSection(e) {
   const isF = e.type === "forecaster";
   const isAdmin = e.type === "administratie";
   const personenNamen = (e.personen || []).map(p => p.naam).filter(Boolean).join(", ");
-  const rows = [kv("Datum", w(e.datum))];
+  const naamKeys = ["personen", "meteoroloog", ...(e.personen || []).map((_, i) => `personen.${i}.naam`)];
+  const rows = [kv("Datum", w(e.datum), chefOpts(e, "datum"))];
   if (!isAdmin) {
-    rows.push(kv("Dienst", w(e.shift)));
-    rows.push(kv("Shift", w(e.shift_code)));
+    rows.push(kv("Dienst", w(e.shift), chefOpts(e, "shift")));
+    rows.push(kv("Shift", w(e.shift_code), chefOpts(e, "shift_code")));
   }
   if (isAdmin) {
-    rows.push(kv("Administratie", w((e.administratie || []).filter(Boolean).join(", "))));
+    rows.push(kv("Administratie", w((e.administratie || []).filter(Boolean).join(", ")), chefOpts(e, "administratie")));
   } else {
-    rows.push(kv(isF ? "Meteoroloog" : "Adjunct-meteorologen", w(isF ? (personenNamen || e.meteoroloog) : personenNamen)));
+    rows.push(kv(isF ? "Meteoroloog" : "Adjunct-meteorologen", w(isF ? (personenNamen || e.meteoroloog) : personenNamen), chefOpts(e, naamKeys)));
   }
-  if (e.type === "observer") rows.push(kv("Security", w((e.security || []).filter(Boolean).join(", "))));
+  if (e.type === "observer") rows.push(kv("Security", w((e.security || []).filter(Boolean).join(", ")), chefOpts(e, "security")));
   if (isAdmin || e.type === "observer") {
-    rows.push(kv("Onderhoudmedewerker", w((e.onderhoud || []).filter(Boolean).join(", "))));
+    rows.push(kv("Onderhoudmedewerker", w((e.onderhoud || []).filter(Boolean).join(", ")), chefOpts(e, "onderhoud")));
   }
   if (isF) {
-    rows.push(kv("Verwachtingen uitgebracht", lijst(e.verwachtingen_checks)));
-    rows.push(kv("Anders (omschrijf)", w(e.verwachtingen)));
+    rows.push(kv("Verwachtingen uitgebracht", lijst(e.verwachtingen_checks), chefOpts(e, "verwachtingen_checks")));
+    rows.push(kvVeld(e, "verwachtingen", "Anders (omschrijf)", w(e.verwachtingen)));
   }
   rows.push(kv("Ingevuld door", w(e.ingevuld_door)));
   return [heading("Basisgegevens"), table(rows)];
@@ -105,7 +125,7 @@ function administratieWerkSection(e) {
 // voor zaken die buiten de vaste categorieën vallen.
 function statusSection(titel, labels, e, ids, andersKey) {
   const rows = statusRows(labels, e);
-  if (ids.includes(andersKey)) rows.push(kv("Anders", w(e[andersKey]), chefOpts(e, andersKey)));
+  if (ids.includes(andersKey)) rows.push(kvVeld(e, andersKey, "Anders", w(e[andersKey])));
   if (!rows.length) return [];
   return [heading(titel, HeadingLevel.HEADING_3), table(rows)];
 }
@@ -117,18 +137,25 @@ function werkzaamhedenSection(e) {
     blocks.push(new Paragraph({ text: p.naam || `Persoon ${idx + 1}`, heading: HeadingLevel.HEADING_4 }));
     // Elk tijdstip met de bijbehorende initialen: "12 UTC (AB), 13 UTC (CD)".
     const withInit = (arr, initMap) => (arr || []).map(t => `${t}${initMap?.[t] ? ` (${initMap[t]})` : ""}`).join(", ") || LEEG;
+    // Per categorie een eigen veldnaam, zodat één gewijzigd tijdstip niet het
+    // hele blok rood maakt.
+    const pk = (...velden) => velden.map(v => `personen.${idx}.${v}`);
+    const cat = ([gedaan, init, label]) =>
+      kv(label, withInit(p[gedaan], p[init]), chefOpts(e, pk(gedaan, init)));
     const rows = [
-      kv("Synop-boek", withInit(p.synop_gedaan, p.synop_init)),
-      kv("Synop-AMHS", withInit(p.synop_amhs_gedaan, p.synop_amhs_init)),
-      kv("Metar-AMHS", withInit(p.metar_gedaan, p.metar_init)),
-      kv("Klimawaarneming-boek", withInit(p.klima_gedaan, p.klima_init)),
-      kv("Upload Metar website", withInit(p.upload_metar_gedaan, p.upload_metar_init)),
-      kv("Digitale invoer WX website", withInit(p.digitaal_wx_gedaan, p.digitaal_wx_init)),
-      kv("Digitale invoer Klima website", withInit(p.digitaal_klima_gedaan, p.digitaal_klima_init)),
-      kv("Upload Synop WIS 2.0", withInit(p.wis_synop_gedaan, p.wis_synop_init)),
-      kv("Verzenden TAF", withInit(p.taf_gedaan, p.taf_init)),
-      kv("Digitale invoer SPECI website", p.digitaal_speci_gedaan ? (p.digitaal_speci_welke || "Ja") + (p.digitaal_speci_init ? ` (${p.digitaal_speci_init})` : "") : LEEG),
-      kv("Verzenden RR naar Klima", p.rr_gedaan ? "Verzonden" + (p.rr_init ? ` (${p.rr_init})` : "") : LEEG),
+      cat(["synop_gedaan", "synop_init", "Synop-boek"]),
+      cat(["synop_amhs_gedaan", "synop_amhs_init", "Synop-AMHS"]),
+      cat(["metar_gedaan", "metar_init", "Metar-AMHS"]),
+      cat(["klima_gedaan", "klima_init", "Klimawaarneming-boek"]),
+      cat(["upload_metar_gedaan", "upload_metar_init", "Upload Metar website"]),
+      cat(["digitaal_wx_gedaan", "digitaal_wx_init", "Digitale invoer WX website"]),
+      cat(["digitaal_klima_gedaan", "digitaal_klima_init", "Digitale invoer Klima website"]),
+      cat(["wis_synop_gedaan", "wis_synop_init", "Upload Synop WIS 2.0"]),
+      cat(["taf_gedaan", "taf_init", "Verzenden TAF"]),
+      kv("Digitale invoer SPECI website", p.digitaal_speci_gedaan ? (p.digitaal_speci_welke || "Ja") + (p.digitaal_speci_init ? ` (${p.digitaal_speci_init})` : "") : LEEG,
+        chefOpts(e, pk("digitaal_speci_gedaan", "digitaal_speci_welke", "digitaal_speci_init"))),
+      kv("Verzenden RR naar Klima", p.rr_gedaan ? "Verzonden" + (p.rr_init ? ` (${p.rr_init})` : "") : LEEG,
+        chefOpts(e, pk("rr_gedaan", "rr_init"))),
     ];
     blocks.push(table(rows));
   });
@@ -188,7 +215,7 @@ function bijzonderhedenSection(e, ids) {
 
   // Geselecteerde velden komen altijd mee, ook als ze leeg zijn.
   const groep = (titel, velden) => {
-    const rows = velden.filter(([k]) => has(k)).map(([k, l]) => kv(l, w(e[k]), chefOpts(e, k)));
+    const rows = velden.filter(([k]) => has(k)).map(([k, l]) => kvVeld(e, k, l, w(e[k])));
     if (rows.length) blocks.push(heading(titel, HeadingLevel.HEADING_3), table(rows));
   };
   groep("Bijzonderheden \u2013 Logistiek", logistiek);
@@ -218,7 +245,7 @@ function bijzonderhedenSection(e, ids) {
 
   if (has("byz_algemeen")) {
     blocks.push(heading("Algemene Bijzonderheden", HeadingLevel.HEADING_3));
-    blocks.push(table([kv("Algemeen", w(e.byz_algemeen), chefOpts(e, "byz_algemeen"))]));
+    blocks.push(table([kvVeld(e, "byz_algemeen", "Algemeen", w(e.byz_algemeen))]));
   }
   return blocks;
 }
