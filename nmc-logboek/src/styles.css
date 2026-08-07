@@ -7,6 +7,8 @@
   --white:#FFFFFF; --warn:#E8A020; --danger:#D94040;
   /* Donkerder groen dan het merkgroen: leesbaar als tekst op wit. */
   --correctie:#0B7A57;
+  /* Blauw voor aanpassingen door de beheerder. */
+  --beheer:#1A6FB5;
 }
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -85,6 +87,11 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 .eigen-correctie-mode select,.eigen-correctie-mode textarea{color:var(--correctie)!important;font-weight:600;}
 .correctie-banner{background:#E8F8F1;border:1px solid var(--correctie);color:#0A5C42;border-radius:8px;padding:10px 14px;font-size:12px;font-weight:600;margin-bottom:16px;}
 .correctie-changed{color:var(--correctie)!important;font-weight:600;}
+.beheer-changed{color:var(--beheer)!important;font-weight:600;}
+.badge-beheer{background:var(--beheer);color:#fff;}
+.beheer-edit-mode input:not([type="checkbox"]):not([type="radio"]),
+.beheer-edit-mode select,.beheer-edit-mode textarea{color:var(--beheer)!important;font-weight:600;}
+.beheer-edit-banner{background:#E8F1FA;border:1px solid var(--beheer);color:#0F4C82;border-radius:8px;padding:10px 14px;font-size:12px;font-weight:600;margin-bottom:16px;}
 .badge-correctie{background:var(--correctie);color:#fff;}
 .correctie-blok{background:#E8F8F1;border:1px solid var(--correctie);border-radius:10px;padding:14px 16px;margin-bottom:16px;}
 .correctie-blok.verstreken{background:var(--paper);border-color:var(--paperMid);}

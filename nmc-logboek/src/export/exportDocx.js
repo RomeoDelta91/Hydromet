@@ -2,13 +2,15 @@ import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   HeadingLevel, AlignmentType, WidthType, PageBreak, BorderStyle,
 } from "docx";
-import { chefAantekeningVelden, heeftMarkering, splitsAanvulling } from "../utils.js";
+import { chefAantekeningVelden, beheerAanpassingVelden, heeftMarkering, splitsAanvulling } from "../utils.js";
 
 const BAD_STATUS = ["Storing", "Defect", "Uitgevallen"];
 // Rood voor velden die de chef/admin achteraf gewijzigd heeft.
 const CHEF_RED = "D94040";
 // Groen voor een eigen correctie door de invoerder binnen het correctievenster.
 const CORRECTIE_GROEN = "0B7A57";
+// Blauw voor een aanpassing door de beheerder.
+const BEHEER_BLAUW = "1A6FB5";
 
 // Lege velden worden niet overgeslagen maar als streepje getoond, zodat het
 // document laat zien dat het veld bestond en niet is ingevuld.
@@ -17,9 +19,12 @@ const w = v => (v === undefined || v === null || v === "" ? LEEG : v);
 const lijst = v => (Array.isArray(v) && v.length ? v.join(", ") : LEEG);
 
 const chefEditsVan = e => chefAantekeningVelden(e);
-// Rood (chef) weegt zwaarder dan groen (eigen correctie) als een veld in beide staat.
+const beheerEditsVan = e => beheerAanpassingVelden(e);
+// Volgorde bij overlap: rood (chef) boven blauw (beheerder) boven groen
+// (eigen correctie).
 const chefOpts = (e, key) => {
   if (heeftMarkering(key, chefEditsVan(e))) return { color: CHEF_RED, bold: true };
+  if (heeftMarkering(key, beheerEditsVan(e))) return { color: BEHEER_BLAUW, bold: true };
   if (heeftMarkering(key, e.correctie_velden || [])) return { color: CORRECTIE_GROEN, bold: true };
   return {};
 };
@@ -28,12 +33,14 @@ const chefOpts = (e, key) => {
 // invuller die ervoor stond blijft gewoon zwart.
 function waardeCell(e, key, waarde) {
   const vorige = (e.chef_vorige_waarden || {})[key];
-  const deel = heeftMarkering(key, chefEditsVan(e)) ? splitsAanvulling(waarde, vorige) : null;
+  const isChef = heeftMarkering(key, chefEditsVan(e));
+  const isBeheer = !isChef && heeftMarkering(key, beheerEditsVan(e));
+  const deel = (isChef || isBeheer) ? splitsAanvulling(waarde, vorige) : null;
   if (!deel) return cell(waarde, chefOpts(e, key));
   return new TableCell({
     children: [new Paragraph({ children: [
       new TextRun({ text: deel.origineel }),
-      new TextRun({ text: deel.toevoeging, color: CHEF_RED, bold: true }),
+      new TextRun({ text: deel.toevoeging, color: isChef ? CHEF_RED : BEHEER_BLAUW, bold: true }),
     ] })],
   });
 }
@@ -132,7 +139,7 @@ function statusSection(titel, labels, e, ids, andersKey) {
 
 function werkzaamhedenSection(e) {
   if (e.type !== "observer") return [];
-  const blocks = [heading("Werkzaamheden per persoon", HeadingLevel.HEADING_3)];
+  const blocks = [heading("Werkzaamheden", HeadingLevel.HEADING_3)];
   (e.personen || []).forEach((p, idx) => {
     blocks.push(new Paragraph({ text: p.naam || `Persoon ${idx + 1}`, heading: HeadingLevel.HEADING_4 }));
     // Elk tijdstip met de bijbehorende initialen: "12 UTC (AB), 13 UTC (CD)".
@@ -277,6 +284,14 @@ function entrySections(e, ids) {
       children: [new TextRun({
         text: `Gecorrigeerd door ${laatste?.door || e.ingevuld_door || "—"}${laatste?.tijdstip ? ` · ${laatste.tijdstip}` : ""} — correcties staan in het groen.`,
         color: CORRECTIE_GROEN, bold: true, italics: true, size: 18,
+      })],
+    }));
+  }
+  if (beheerEditsVan(e).length) {
+    blocks.push(new Paragraph({
+      children: [new TextRun({
+        text: `Aangepast door beheerder${e.admin_edit_datum ? ` · ${String(e.admin_edit_datum).slice(0, 10)}` : ""}`,
+        color: BEHEER_BLAUW, bold: true, italics: true, size: 18,
       })],
     }));
   }

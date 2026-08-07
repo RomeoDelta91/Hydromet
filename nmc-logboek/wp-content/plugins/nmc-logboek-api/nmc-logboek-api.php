@@ -409,7 +409,9 @@ define('NMC_CORRECTIE_MINUTEN', 30);
 
 // Heeft de chef een aantekening bij dit record gemaakt?
 function nmc_heeft_chef_aantekening($data, $ingevuld_door) {
-    return !empty($data['chef_edits']);
+    // Zodra de chef of de beheerder het record heeft aangeraakt, is het niet
+    // meer aan de invuller om het nog te corrigeren.
+    return !empty($data['chef_edits']) || !empty($data['admin_edits']);
 }
 
 // Ontbrekend, null, lege tekst en lege lijst betekenen allemaal "niets
@@ -426,6 +428,7 @@ function nmc_diff_velden($oud, $nieuw) {
     $skip = [
         'id', 'uuid', 'ts', 'ts_created', 'ts_updated', 'deleted_at', 'data_json',
         'type', 'ingevuld_door', 'chef_edits', 'chef_edit_door', 'chef_edit_datum',
+        'chef_vorige_waarden', 'admin_edits', 'admin_edit_datum',
         'originele_versie', 'correcties', 'correctie_velden',
     ];
     $oud = is_array($oud) ? $oud : [];
@@ -822,6 +825,9 @@ function nmc_put_logboek(WP_REST_Request $req) {
     // logboek staat.
     if (!empty($body['chef_edits'])) {
         $body['chef_edit_datum'] = current_time('Y-m-d');
+    }
+    if (!empty($body['admin_edits'])) {
+        $body['admin_edit_datum'] = current_time('Y-m-d');
     }
 
     $result = $wpdb->update(

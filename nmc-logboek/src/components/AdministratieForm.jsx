@@ -39,7 +39,7 @@ function normalizeInitial(initial) {
   return merged;
 }
 
-export default function AdministratieForm({ onSave, gebruiker, initial, editMode }) {
+export default function AdministratieForm({ onSave, gebruiker, initial, editMode, beheerder }) {
   const [f, setF] = useState(() => normalizeInitial(initial));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -76,8 +76,10 @@ export default function AdministratieForm({ onSave, gebruiker, initial, editMode
   const reqStyle = k => (errors[k] ? { borderColor: "var(--danger)" } : {});
 
   return (
-    <div className={`section${editMode ? " chef-edit-mode" : ""}`}>
-      {editMode && <div className="chef-edit-banner">✏ U maakt een aantekening als chef/admin — de ingevoerde tekst wordt rood weergegeven zodat de aantekeningen opvallen.</div>}
+    <div className={`section${editMode ? (beheerder ? " beheer-edit-mode" : " chef-edit-mode") : ""}`}>
+      {editMode && (beheerder
+        ? <div className="beheer-edit-banner">✏ U past dit record aan als beheerder — de ingevoerde tekst wordt blauw weergegeven.</div>
+        : <div className="chef-edit-banner">✏ U maakt een aantekening als chef — de ingevoerde tekst wordt rood weergegeven zodat de aantekeningen opvallen.</div>)}
       <div className="card">
         <div className="card-header"><span>📋 Basisgegevens</span></div>
         <div className="card-body">

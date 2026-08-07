@@ -150,7 +150,7 @@ function WzRow({ label, field_status, field_maand, field_init, val_status, val_m
   );
 }
 
-export default function ObserverForm({ onSave, gebruiker, initial, editMode, correctieMode }) {
+export default function ObserverForm({ onSave, gebruiker, initial, editMode, correctieMode, beheerder }) {
   const [f, setF] = useState(() => normalizeInitial(initial));
   const [errors, setErrors] = useState({});
   const [activePersoonTab, setActivePersoonTab] = useState(0);
@@ -244,9 +244,11 @@ export default function ObserverForm({ onSave, gebruiker, initial, editMode, cor
   const tafTimesP = filterTijdenVoorPersoon(tafTimes, persoonActief.werktijd_van, persoonActief.werktijd_tot);
 
   return (
-    <div className={`section${editMode ? " chef-edit-mode" : ""}${correctieMode ? " eigen-correctie-mode" : ""}`}>
+    <div className={`section${editMode ? (beheerder ? " beheer-edit-mode" : " chef-edit-mode") : ""}${correctieMode ? " eigen-correctie-mode" : ""}`}>
       {correctieMode && <div className="correctie-banner">✏ U corrigeert uw eigen invoer binnen het correctievenster. De oorspronkelijke versie blijft bewaard en de correctie wordt vastgelegd.</div>}
-      {editMode && <div className="chef-edit-banner">✏ U maakt een aantekening als chef/admin — de ingevoerde tekst wordt rood weergegeven zodat de aantekeningen opvallen.</div>}
+      {editMode && (beheerder
+        ? <div className="beheer-edit-banner">✏ U past dit record aan als beheerder — de ingevoerde tekst wordt blauw weergegeven.</div>
+        : <div className="chef-edit-banner">✏ U maakt een aantekening als chef — de ingevoerde tekst wordt rood weergegeven zodat de aantekeningen opvallen.</div>)}
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
         <VorigeRecords type="observer" />
       </div>

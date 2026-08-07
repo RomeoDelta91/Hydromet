@@ -210,7 +210,7 @@ export default function App() {
       {tab === "forecaster" && formTab("forecaster", ForecasterForm)}
       {tab === "observer" && formTab("observer", ObserverForm)}
       {tab === "administratie" && <AdministratieForm onSave={handleSaveForecaster} gebruiker={gebruiker} />}
-      {tab === "overzicht" && <Overzicht canDelete={canModify} canEdit={canModify} canExport={canExport} showToast={showToast} gebruiker={gebruiker} />}
+      {tab === "overzicht" && <Overzicht canDelete={canModify} canEdit={canModify} canExport={canExport} showToast={showToast} gebruiker={gebruiker} role={role} />}
       {tab === "analyse" && <AnalysePanel canExport={canExport} />}
       {tab === "beheer" && <UserAdmin showToast={showToast} />}
 

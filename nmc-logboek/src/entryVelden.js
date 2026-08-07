@@ -157,7 +157,7 @@ function observerSecties(e) {
       rij("inst_anders", "Anders", e.inst_anders),
     ] },
     {
-      titel: "Werkzaamheden per persoon",
+      titel: "Werkzaamheden",
       subblokken: personen.map((persoon, idx) => ({
         titel: persoon.naam || `Persoon ${idx + 1}`,
         rijen: [

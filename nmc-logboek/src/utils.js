@@ -9,11 +9,21 @@ export function chefAantekeningVelden(e) {
   return Array.isArray(e?.chef_edits) ? e.chef_edits : [];
 }
 
+// Aanpassingen door de beheerder worden los van die van de chef bijgehouden:
+// rood is een inhoudelijke aantekening van de chef, blauw een ingreep van de
+// beheerder.
+export function beheerAanpassingVelden(e) {
+  return Array.isArray(e?.admin_edits) ? e.admin_edits : [];
+}
+
 // Technische/meta-velden die niet meetellen bij het bepalen wat de chef
 // inhoudelijk gewijzigd heeft.
 const DIFF_SKIP = new Set([
   "id", "uuid", "ts", "ts_created", "ts_updated", "deleted_at", "data_json",
-  "type", "ingevuld_door", "chef_edits", "chef_edit_door", "chef_edit_datum",
+  "type", "ingevuld_door",
+  "chef_edits", "chef_edit_door", "chef_edit_datum", "chef_vorige_waarden",
+  "admin_edits", "admin_edit_datum",
+  "originele_versie", "correcties", "correctie_velden",
 ]);
 
 // Vergelijkt een bewerkte entry met het origineel en geeft de veldnamen terug

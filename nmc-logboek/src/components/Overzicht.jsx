@@ -20,7 +20,7 @@ function namenVan(e) {
   return uit;
 }
 
-export default function Overzicht({ canDelete, canEdit = true, canExport = true, showToast, gebruiker }) {
+export default function Overzicht({ canDelete, canEdit = true, canExport = true, showToast, gebruiker, role }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -86,9 +86,10 @@ export default function Overzicht({ canDelete, canEdit = true, canExport = true,
     }
   };
 
-  // Onthoud welke velden de chef/admin gewijzigd heeft, zodat die daarna
-  // blijvend rood getoond worden in het overzicht en de Word-export — ook voor
-  // forecasters/observers die het record later terugroepen.
+  // Een aanpassing door de beheerder wordt los bijgehouden van een aantekening
+  // door de chef: rood voor de chef (inhoudelijk), blauw voor de beheerder
+  // (technisch/herstel). Zo is achteraf te zien wie wat heeft gedaan.
+  const isBeheerder = role === "admin";
   const handleEditSave = async updated => {
     try {
       const gewijzigd = gewijzigdeVelden(editing, updated);
@@ -98,12 +99,20 @@ export default function Overzicht({ canDelete, canEdit = true, canExport = true,
       gewijzigd.forEach(k => {
         if (typeof editing[k] === "string" && !(k in vorige)) vorige[k] = editing[k];
       });
-      const payload = gewijzigd.length ? {
-        ...updated,
-        chef_vorige_waarden: vorige,
-        chef_edits: [...new Set([...(editing.chef_edits || []), ...gewijzigd])],
-        chef_edit_door: gebruiker || "",
-      } : updated;
+      const payload = gewijzigd.length
+        ? (isBeheerder
+            ? {
+                ...updated,
+                chef_vorige_waarden: vorige,
+                admin_edits: [...new Set([...(editing.admin_edits || []), ...gewijzigd])],
+              }
+            : {
+                ...updated,
+                chef_vorige_waarden: vorige,
+                chef_edits: [...new Set([...(editing.chef_edits || []), ...gewijzigd])],
+                chef_edit_door: gebruiker || "",
+              })
+        : updated;
       await updateEntry(payload.uuid || payload.id, payload);
       showToast?.("✓ Logboek bijgewerkt");
       setEditing(null);
@@ -124,7 +133,7 @@ export default function Overzicht({ canDelete, canEdit = true, canExport = true,
     return (
       <div className="section">
         <button className="btn btn-secondary" style={{ marginBottom: 12 }} onClick={() => setEditing(null)}>← Terug naar overzicht</button>
-        <FormComp initial={editing} gebruiker={editing.ingevuld_door} onSave={handleEditSave} editMode />
+        <FormComp key={`bewerk-${editing.uuid || editing.id}`} initial={editing} gebruiker={editing.ingevuld_door} onSave={handleEditSave} editMode beheerder={isBeheerder} />
       </div>
     );
   }

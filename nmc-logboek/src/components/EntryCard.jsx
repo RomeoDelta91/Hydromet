@@ -1,5 +1,5 @@
 import { sectiesVoorEntry } from "../entryVelden.js";
-import { chefAantekeningVelden, heeftMarkering, splitsAanvulling } from "../utils.js";
+import { chefAantekeningVelden, beheerAanpassingVelden, heeftMarkering, splitsAanvulling } from "../utils.js";
 
 // Toont één volledig logboek-record: elk kopstuk en elk veld, ook wanneer een
 // veld niet is ingevuld (dan blijft de waarde leeg) of op de standaardwaarde
@@ -10,11 +10,14 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
   const isAdmin = e.type === "administratie";
 
   const chefEdits = chefAantekeningVelden(e);
+  const beheerEdits = beheerAanpassingVelden(e);
   const correctieVelden = e.correctie_velden || [];
-  // Rood = aantekening van de chef, groen = eigen correctie van de invoerder.
-  // Staat een veld in beide, dan weegt de chef-aantekening het zwaarst.
+  // Rood = aantekening van de chef, blauw = aanpassing door de beheerder,
+  // groen = eigen correctie van de invoerder. Raakt meer dan één partij
+  // hetzelfde veld, dan weegt de chef het zwaarst, daarna de beheerder.
   const markKlasse = key => {
     if (heeftMarkering(key, chefEdits)) return " chef-changed";
+    if (heeftMarkering(key, beheerEdits)) return " beheer-changed";
     if (heeftMarkering(key, correctieVelden)) return " correctie-changed";
     return "";
   };
@@ -23,9 +26,11 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
   // toevoeging — niet de oorspronkelijke tekst van de invuller ervoor.
   const vorige = e.chef_vorige_waarden || {};
   const aanvulling = r => {
-    if (!heeftMarkering(r.key, chefEdits)) return null;
+    const klasse = markKlasse(r.key).trim();
+    if (klasse !== "chef-changed" && klasse !== "beheer-changed") return null;
     const sleutel = Array.isArray(r.key) ? r.key.find(k => k in vorige) : r.key;
-    return splitsAanvulling(r.waarde, vorige[sleutel]);
+    const deel = splitsAanvulling(r.waarde, vorige[sleutel]);
+    return deel ? { ...deel, klasse } : null;
   };
 
   const secties = sectiesVoorEntry(e);
@@ -39,7 +44,7 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
         {deel ? (
           <div className="ef-rij-waarde">
             {deel.origineel}
-            <span className="chef-changed">{deel.toevoeging}</span>
+            <span className={deel.klasse}>{deel.toevoeging}</span>
           </div>
         ) : (
           <div className={`ef-rij-waarde${r.waarde ? "" : " leeg"}${r.waarschuwing ? " storing" : ""}${markKlasse(r.key)}`}>
@@ -60,7 +65,8 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
           {e.shift_code && <span style={{ fontSize: 11, color: "var(--inkLo)", fontFamily: "IBM Plex Mono,monospace" }}>{e.shift_code}</span>}
           {heeftStoring && <span className="badge badge-warn">⚠ Storing</span>}
           {chefEdits.length > 0 && <span className="badge badge-chef">✏ Aantekening chef</span>}
-          {chefEdits.length === 0 && correctieVelden.length > 0 && <span className="badge badge-correctie">✏ Gecorrigeerd</span>}
+          {beheerEdits.length > 0 && <span className="badge badge-beheer">✏ Aangepast door beheerder</span>}
+          {chefEdits.length === 0 && beheerEdits.length === 0 && correctieVelden.length > 0 && <span className="badge badge-correctie">✏ Gecorrigeerd</span>}
         </div>
         <div className="entry-actions">
           {onEdit && canEdit && <button className="btn btn-secondary" onClick={() => onEdit(e)}>Bewerk</button>}
@@ -93,6 +99,11 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
         {chefEdits.length > 0 && (
           <div style={{ fontSize: 11, color: "var(--danger)", fontFamily: "IBM Plex Mono,monospace", fontWeight: 600, marginTop: 4 }}>
             Aantekening door chef: {e.chef_edit_door || "—"}{e.chef_edit_datum ? ` · ${String(e.chef_edit_datum).slice(0, 10)}` : ""} — Aantekeningen staan in het rood.
+          </div>
+        )}
+        {beheerEdits.length > 0 && (
+          <div style={{ fontSize: 11, color: "var(--beheer)", fontFamily: "IBM Plex Mono,monospace", fontWeight: 600, marginTop: 4 }}>
+            Aangepast door beheerder{e.admin_edit_datum ? ` · ${String(e.admin_edit_datum).slice(0, 10)}` : ""}
           </div>
         )}
       </div>
