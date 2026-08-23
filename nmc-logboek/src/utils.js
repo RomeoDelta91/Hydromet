@@ -82,19 +82,53 @@ export function gewijzigdeVelden(origineel, bewerkt) {
   return uit;
 }
 
-// Heeft de chef tekst tóégevoegd aan wat er al stond, geef dan het
-// oorspronkelijke deel en de toevoeging apart terug. Zo hoeft alleen de
-// aantekening rood, en niet de tekst van de invuller ervoor.
-export function splitsAanvulling(waarde, vorigeWaarde) {
+// Heeft de chef tekst tóégevoegd aan wat er al stond, geef dan alleen die
+// toevoegingen gekleurd terug. De chef vult vaak middenin aan (bijvoorbeeld
+// achter een schuine streep per alinea), dus een simpele controle op "begint
+// met de oude tekst" volstaat niet: er wordt woord voor woord vergeleken.
+const MAX_TOKENS = 1500;
+
+const tokeniseer = t => t.split(/(\s+)/).filter(x => x !== "");
+
+// Geeft een lijst segmenten terug: { tekst, gewijzigd }. Ongewijzigde stukken
+// blijven zwart, toegevoegde stukken worden gekleurd. Verwijderde tekst is niet
+// meer aanwezig en kan dus niet getoond worden.
+export function tekstSegmenten(waarde, vorigeWaarde) {
   if (typeof waarde !== "string" || typeof vorigeWaarde !== "string") return null;
-  const oud = vorigeWaarde.trim();
-  if (!oud || oud === waarde.trim()) return null;
-  if (!waarde.startsWith(vorigeWaarde) && !waarde.startsWith(oud)) return null;
-  const knip = waarde.startsWith(vorigeWaarde) ? vorigeWaarde.length : oud.length;
-  const toevoeging = waarde.slice(knip);
-  if (!toevoeging.trim()) return null;
-  return { origineel: waarde.slice(0, knip), toevoeging };
+  if (!vorigeWaarde.trim() || waarde === vorigeWaarde) return null;
+
+  const a = tokeniseer(vorigeWaarde);
+  const b = tokeniseer(waarde);
+  if (a.length > MAX_TOKENS || b.length > MAX_TOKENS) return null;
+
+  // Langste gemeenschappelijke deelrij, van achter naar voren opgebouwd.
+  const n = a.length, m = b.length;
+  const dp = new Uint32Array((n + 1) * (m + 1));
+  const idx = (i, j) => i * (m + 1) + j;
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      dp[idx(i, j)] = a[i] === b[j]
+        ? dp[idx(i + 1, j + 1)] + 1
+        : Math.max(dp[idx(i + 1, j)], dp[idx(i, j + 1)]);
+    }
+  }
+
+  const segmenten = [];
+  const voegToe = (tekst, gewijzigd) => {
+    const laatste = segmenten[segmenten.length - 1];
+    if (laatste && laatste.gewijzigd === gewijzigd) laatste.tekst += tekst;
+    else segmenten.push({ tekst, gewijzigd });
+  };
+
+  let i = 0, j = 0;
+  while (j < m) {
+    if (i < n && a[i] === b[j]) { voegToe(b[j], false); i++; j++; }
+    else if (i < n && dp[idx(i + 1, j)] >= dp[idx(i, j + 1)]) { i++; }
+    else { voegToe(b[j], true); j++; }
+  }
+  return segmenten.some(seg => seg.gewijzigd) ? segmenten : null;
 }
+
 
 // Een markering geldt als een van de opgegeven veldnamen in de lijst staat.
 export function heeftMarkering(key, lijst) {

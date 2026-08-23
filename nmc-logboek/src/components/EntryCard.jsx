@@ -1,5 +1,5 @@
 import { sectiesVoorEntry } from "../entryVelden.js";
-import { chefAantekeningVelden, beheerAanpassingVelden, heeftMarkering, splitsAanvulling } from "../utils.js";
+import { chefAantekeningVelden, beheerAanpassingVelden, heeftMarkering, tekstSegmenten } from "../utils.js";
 
 // Toont één volledig logboek-record: elk kopstuk en elk veld, ook wanneer een
 // veld niet is ingevuld (dan blijft de waarde leeg) of op de standaardwaarde
@@ -29,8 +29,8 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
     const klasse = markKlasse(r.key).trim();
     if (klasse !== "chef-changed" && klasse !== "beheer-changed") return null;
     const sleutel = Array.isArray(r.key) ? r.key.find(k => k in vorige) : r.key;
-    const deel = splitsAanvulling(r.waarde, vorige[sleutel]);
-    return deel ? { ...deel, klasse } : null;
+    const segmenten = tekstSegmenten(r.waarde, vorige[sleutel]);
+    return segmenten ? { segmenten, klasse } : null;
   };
 
   const secties = sectiesVoorEntry(e);
@@ -43,8 +43,9 @@ export default function EntryCard({ e, onDelete, onEdit, canDelete, canEdit = tr
         <div className="ef-rij-label">{r.label}</div>
         {deel ? (
           <div className="ef-rij-waarde">
-            {deel.origineel}
-            <span className={deel.klasse}>{deel.toevoeging}</span>
+            {deel.segmenten.map((seg, n) => (
+              <span key={n} className={seg.gewijzigd ? deel.klasse : undefined}>{seg.tekst}</span>
+            ))}
           </div>
         ) : (
           <div className={`ef-rij-waarde${r.waarde ? "" : " leeg"}${r.waarschuwing ? " storing" : ""}${markKlasse(r.key)}`}>

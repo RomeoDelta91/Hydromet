@@ -2,7 +2,7 @@ import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   HeadingLevel, AlignmentType, WidthType, PageBreak, BorderStyle,
 } from "docx";
-import { chefAantekeningVelden, beheerAanpassingVelden, heeftMarkering, splitsAanvulling } from "../utils.js";
+import { chefAantekeningVelden, beheerAanpassingVelden, heeftMarkering, tekstSegmenten } from "../utils.js";
 
 const BAD_STATUS = ["Storing", "Defect", "Uitgevallen"];
 // Rood voor velden die de chef/admin achteraf gewijzigd heeft.
@@ -35,13 +35,15 @@ function waardeCell(e, key, waarde) {
   const vorige = (e.chef_vorige_waarden || {})[key];
   const isChef = heeftMarkering(key, chefEditsVan(e));
   const isBeheer = !isChef && heeftMarkering(key, beheerEditsVan(e));
-  const deel = (isChef || isBeheer) ? splitsAanvulling(waarde, vorige) : null;
-  if (!deel) return cell(waarde, chefOpts(e, key));
+  const segmenten = (isChef || isBeheer) ? tekstSegmenten(waarde, vorige) : null;
+  if (!segmenten) return cell(waarde, chefOpts(e, key));
+  const kleur = isChef ? CHEF_RED : BEHEER_BLAUW;
   return new TableCell({
-    children: [new Paragraph({ children: [
-      new TextRun({ text: deel.origineel }),
-      new TextRun({ text: deel.toevoeging, color: isChef ? CHEF_RED : BEHEER_BLAUW, bold: true }),
-    ] })],
+    children: [new Paragraph({
+      children: segmenten.map(seg => new TextRun(
+        seg.gewijzigd ? { text: seg.tekst, color: kleur, bold: true } : { text: seg.tekst },
+      )),
+    })],
   });
 }
 
